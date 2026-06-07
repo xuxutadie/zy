@@ -1,0 +1,1215 @@
+const state = {
+  data: null,
+  currentBand: "稳一稳",
+  results: [],
+  hasCalculated: false,
+  user: null,
+  appReady: false,
+};
+
+const bandOrder = ["冲一冲", "稳一稳", "保一保", "谨慎填报"];
+const pageIds = ["calculator", "dashboard", "schools", "data"];
+const AUTH_TOKEN_KEY = "gyzk_auth_token";
+
+function isAdmin() {
+  return Boolean(state.user?.isAdmin || state.user?.role === "admin");
+}
+
+function getAllowedPageIds() {
+  return isAdmin() ? pageIds : ["calculator", "dashboard", "schools"];
+}
+
+function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+}
+
+function setAuthToken(token) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+async function authFetch(url, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+  const token = getAuthToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+  const payload = await response.json().catch(() => ({ ok: false, message: "服务响应异常" }));
+  if (!response.ok) {
+    throw new Error(payload.message || "请求失败");
+  }
+  return payload;
+}
+
+function maskPhone(phone) {
+  const value = String(phone || "");
+  return value.length === 11 ? `${value.slice(0, 3)}****${value.slice(-4)}` : value;
+}
+
+function setupAuthUi() {
+  if (document.querySelector("#authGate")) return;
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section class="auth-gate" id="authGate" aria-live="polite">
+        <div class="auth-shell">
+          <aside class="auth-intro" aria-label="系统入口">
+            <div>
+              <img class="auth-logo" src="./assets/youxueku-logo.png" alt="优学库" />
+              <p class="eyebrow">Data Driven Advisory</p>
+              <h1 class="auth-title">贵阳<span>新</span>中考<br />志愿填报模拟器</h1>
+              <p class="auth-slogan">基于贵阳中考公开资料结构化整理，结合录取线、招生计划、位次分布和历史参考，为家长提供可解释的填报测算。</p>
+            </div>
+            <div class="auth-data-proof">
+              <div><strong>169条</strong><span>2025官方录取线，覆盖约110所学校及统招、配额、项目班等类型</span></div>
+              <div><strong>7010行</strong><span>位次换算数据，含全市701行与区域6309行分数段明细</span></div>
+              <div><strong>597条</strong><span>2023-2024历史录取线，用于往年对比和学校热度参考</span></div>
+              <div><strong>8121条/行</strong><span>综合结构化数据，含计划、控制线、规则、地址和来源索引</span></div>
+            </div>
+            <div class="auth-status">
+              <span>另含招生计划明细179条、控制线36条、非计分规则7条、学校地址95条</span>
+              <span>20项公开来源已纳入索引；概率为规则估算，不作录取承诺</span>
+            </div>
+          </aside>
+          <div class="auth-card">
+            <div class="auth-brand">
+              <div>
+                <p class="eyebrow">Account Access</p>
+                <h2>登录后进入操作台</h2>
+              </div>
+            </div>
+          <div class="auth-tabs" role="tablist" aria-label="账号操作">
+            <button class="active" type="button" data-auth-mode="login">密码登录</button>
+            <button type="button" data-auth-mode="register">手机注册</button>
+          </div>
+          <form class="auth-form active" id="loginForm">
+            <label>
+              <span>手机号码</span>
+              <input id="loginPhone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="请输入 11 位手机号..." />
+            </label>
+            <label>
+              <span>登录密码</span>
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="请输入密码..." />
+            </label>
+            <button type="submit">登录进入</button>
+          </form>
+          <form class="auth-form" id="registerForm" hidden>
+            <label>
+              <span>手机号码</span>
+              <input id="registerPhone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="请输入 11 位手机号..." />
+            </label>
+            <div class="auth-code-row">
+              <label>
+                <span>短信验证码</span>
+                <input id="registerCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 位验证码..." />
+              </label>
+              <button class="secondary-action" id="sendCodeButton" type="button">获取验证码</button>
+            </div>
+            <label>
+              <span>设置密码</span>
+              <input id="registerPassword" type="password" autocomplete="new-password" placeholder="至少 8 位..." />
+            </label>
+            <button type="submit">完成注册</button>
+          </form>
+          <p class="auth-message" id="authMessage">本地测试版：验证码会显示在页面提示中，正式上线再接入短信服务商。</p>
+          </div>
+        </div>
+      </section>
+    `,
+  );
+  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+    button.addEventListener("click", () => switchAuthMode(button.dataset.authMode));
+  });
+  document.querySelector("#sendCodeButton").addEventListener("click", sendRegisterCode);
+  document.querySelector("#registerForm").addEventListener("submit", registerWithPhone);
+  document.querySelector("#loginForm").addEventListener("submit", loginWithPassword);
+}
+
+function switchAuthMode(mode) {
+  const isRegister = mode === "register";
+  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.authMode === mode);
+  });
+  document.querySelector("#loginForm").hidden = isRegister;
+  document.querySelector("#loginForm").classList.toggle("active", !isRegister);
+  document.querySelector("#registerForm").hidden = !isRegister;
+  document.querySelector("#registerForm").classList.toggle("active", isRegister);
+  setAuthMessage(isRegister ? "先获取验证码，再设置登录密码。" : "使用手机号和密码登录。");
+}
+
+function setAuthMessage(message, type = "") {
+  const messageNode = document.querySelector("#authMessage");
+  if (!messageNode) return;
+  messageNode.textContent = message;
+  messageNode.dataset.type = type;
+}
+
+function setAuthLoading(isLoading) {
+  document.querySelectorAll(".auth-form button").forEach((button) => {
+    button.disabled = isLoading;
+  });
+}
+
+async function sendRegisterCode() {
+  const phone = document.querySelector("#registerPhone").value.trim();
+  setAuthLoading(true);
+  try {
+    const payload = await authFetch("/api/auth/send-code", {
+      method: "POST",
+      body: JSON.stringify({ phone }),
+    });
+    const devText = payload.devCode ? ` 测试验证码：${payload.devCode}` : "";
+    setAuthMessage(`${payload.message}${devText || "，请在 10 分钟内完成注册。"}`, "success");
+  } catch (error) {
+    setAuthMessage(error.message, "error");
+  } finally {
+    setAuthLoading(false);
+  }
+}
+
+async function registerWithPhone(event) {
+  event.preventDefault();
+  const phone = document.querySelector("#registerPhone").value.trim();
+  const code = document.querySelector("#registerCode").value.trim();
+  const password = document.querySelector("#registerPassword").value;
+  setAuthLoading(true);
+  try {
+    const payload = await authFetch("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ phone, code, password }),
+    });
+    setAuthToken(payload.token);
+    state.user = payload.user;
+    setAuthMessage("注册成功，正在进入操作台。", "success");
+    await startApp();
+  } catch (error) {
+    setAuthMessage(error.message, "error");
+  } finally {
+    setAuthLoading(false);
+  }
+}
+
+async function loginWithPassword(event) {
+  event.preventDefault();
+  const phone = document.querySelector("#loginPhone").value.trim();
+  const password = document.querySelector("#loginPassword").value;
+  setAuthLoading(true);
+  try {
+    const payload = await authFetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ phone, password }),
+    });
+    setAuthToken(payload.token);
+    state.user = payload.user;
+    setAuthMessage("登录成功，正在进入操作台。", "success");
+    await startApp();
+  } catch (error) {
+    setAuthMessage(error.message, "error");
+  } finally {
+    setAuthLoading(false);
+  }
+}
+
+async function loadCurrentUser() {
+  const token = getAuthToken();
+  if (!token) return null;
+  try {
+    const payload = await authFetch("/api/auth/me");
+    return payload.user;
+  } catch {
+    clearAuthToken();
+    return null;
+  }
+}
+
+function updateAuthVisibility() {
+  const isAuthed = Boolean(state.user);
+  document.body.classList.toggle("auth-locked", !isAuthed);
+  document.body.classList.toggle("is-admin", isAuthed && isAdmin());
+  const gate = document.querySelector("#authGate");
+  if (gate) gate.hidden = isAuthed;
+  document.querySelectorAll('.nav a[data-page="data"]').forEach((link) => {
+    link.hidden = !isAdmin();
+  });
+  const account = document.querySelector("#accountPanel");
+  if (account) {
+    account.hidden = !isAuthed;
+    account.querySelector("[data-account-phone]").textContent = state.user ? maskPhone(state.user.phone) : "";
+    const roleNode = account.querySelector("[data-account-role]");
+    if (roleNode) roleNode.textContent = isAdmin() ? "管理员" : "家长";
+    const adminLink = account.querySelector("[data-admin-link]");
+    if (adminLink) adminLink.hidden = !isAdmin();
+  }
+}
+
+function setupAccountPanel() {
+  if (document.querySelector("#accountPanel")) return;
+  document.querySelector(".sidebar").insertAdjacentHTML(
+    "beforeend",
+    `
+      <div class="account-panel" id="accountPanel" hidden>
+        <strong data-account-role></strong>
+        <span data-account-phone></span>
+        <a href="/admin" data-admin-link hidden>后台</a>
+        <button type="button" id="logoutButton">退出</button>
+      </div>
+    `,
+  );
+  document.querySelector("#logoutButton").addEventListener("click", logout);
+}
+
+async function logout() {
+  try {
+    await authFetch("/api/auth/logout", { method: "POST", body: "{}" });
+  } catch {
+    // 本地退出以清理浏览器登录态为准，接口失败不阻断用户退出。
+  }
+  clearAuthToken();
+  state.user = null;
+  updateAuthVisibility();
+}
+
+function getRequestedPage() {
+  const requested = new URLSearchParams(window.location.search).get("page");
+  const allowedPages = getAllowedPageIds();
+  return allowedPages.includes(requested) ? requested : "calculator";
+}
+
+function setActivePage(page, options = {}) {
+  const allowedPages = getAllowedPageIds();
+  const activePage = allowedPages.includes(page) ? page : "calculator";
+  document.querySelectorAll("[data-route]").forEach((section) => {
+    section.hidden = section.id !== activePage;
+  });
+  document.querySelectorAll(".nav a[data-page]").forEach((link) => {
+    const isActive = link.dataset.page === activePage;
+    link.classList.toggle("active", isActive);
+    if (isActive) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  });
+
+  if (!options.skipHistory) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("page", activePage);
+    nextUrl.hash = "";
+    const method = options.replace ? "replaceState" : "pushState";
+    window.history[method]({ page: activePage }, "", nextUrl);
+  }
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+}
+
+function initNavigation() {
+  document.querySelectorAll(".nav a[data-page]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      setActivePage(link.dataset.page);
+    });
+  });
+  window.addEventListener("popstate", () => {
+    setActivePage(getRequestedPage(), { skipHistory: true });
+  });
+  setActivePage(getRequestedPage(), { replace: true });
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function formatPercent(value) {
+  const capped = clamp(Math.round(value), 1, 99);
+  return `${capped}%`;
+}
+
+function estimateRankFromRows(score, rows) {
+  if (!rows.length) return { rank: null, status: "missing" };
+  const rounded = Math.floor(Number(score));
+  const sortedRows = [...rows].sort((a, b) => b.score - a.score);
+  const highest = sortedRows[0];
+  const lowest = sortedRows[sortedRows.length - 1];
+
+  if (rounded > highest.score) {
+    return {
+      rank: highest.cumulative,
+      status: "aboveMax",
+      maxScore: highest.score,
+      topCumulative: highest.cumulative,
+      segment: highest.segment,
+    };
+  }
+
+  const exact = rows.find((row) => row.score === rounded);
+  if (exact) {
+    if (exact.score === highest.score) {
+      return {
+        rank: exact.cumulative,
+        status: "topBucket",
+        maxScore: highest.score,
+        topCumulative: exact.cumulative,
+        segment: exact.segment,
+      };
+    }
+    return { rank: exact.cumulative, status: "exact", segment: exact.segment };
+  }
+
+  const lower = rows.filter((row) => row.score <= rounded).sort((a, b) => b.score - a.score)[0];
+  if (lower) return { rank: lower.cumulative, status: "bucket", segment: lower.segment };
+  return {
+    rank: lowest.cumulative,
+    status: "belowMin",
+    minScore: lowest.score,
+    segment: lowest.segment,
+  };
+}
+
+function getDistributionRank(score) {
+  return estimateRankFromRows(score, state.data.scoreDistribution).rank;
+}
+
+function getRegionDistributionRank(score, region) {
+  const rows = state.data.regionScoreDistribution || [];
+  const regionRows = rows.filter((row) => row.region === region);
+  return estimateRankFromRows(score, regionRows).rank;
+}
+
+function getTopBucketNotice() {
+  const cityTop = estimateRankFromRows(750, state.data.scoreDistribution || []);
+  const mainRegionRows = (state.data.regionScoreDistribution || []).filter((row) => row.region === "三区一地");
+  const mainRegionTop = estimateRankFromRows(750, mainRegionRows);
+  const cityText = cityTop.topCumulative ?? cityTop.rank ?? "暂无";
+  const mainRegionText = mainRegionTop.topCumulative ?? mainRegionTop.rank ?? "暂无";
+  return `2025年全市700分以上累计 ${cityText} 人，三区一地累计 ${mainRegionText} 人；700分以上不再细分精确位次，实际以成绩页为准。`;
+}
+
+function isTopBucketEstimate(estimate) {
+  return estimate.status === "aboveMax" || estimate.status === "topBucket";
+}
+
+function updateAutoRankInputs() {
+  if (!state.data) return;
+  const score = Number(document.querySelector("#scoreInput").value || 0);
+  const region = document.querySelector("#regionInput").value;
+  const cityEstimate = estimateRankFromRows(score, state.data.scoreDistribution || []);
+  const regionRows = (state.data.regionScoreDistribution || []).filter((row) => row.region === region);
+  const areaEstimate = estimateRankFromRows(score, regionRows);
+  const cityRank = cityEstimate.rank;
+  const areaRank = areaEstimate.rank;
+  const rankInput = document.querySelector("#rankInput");
+  const areaRankInput = document.querySelector("#areaRankInput");
+  const cityRankHint = document.querySelector("#cityRankHint");
+  const areaRankHint = document.querySelector("#areaRankHint");
+
+  if (cityRank !== null) {
+    rankInput.value = cityRank;
+    cityRankHint.textContent =
+      isTopBucketEstimate(cityEstimate)
+        ? getTopBucketNotice()
+        : `已按2025全市分数段自动换算为约 ${cityRank} 名内。`;
+  } else {
+    cityRankHint.textContent = "当前暂无可用全市分数段，需手动填写全市位次。";
+  }
+
+  if (areaRank !== null) {
+    areaRankInput.value = areaRank;
+    areaRankHint.textContent =
+      isTopBucketEstimate(areaEstimate)
+        ? getTopBucketNotice()
+        : `已按 ${region} 2025 分数段自动换算为约 ${areaRank} 名内。`;
+  } else {
+    areaRankHint.textContent = "当前分数或区域暂无可用分数段，需手动填写区域位次。";
+  }
+}
+
+function updateQuotaRankHint() {
+  const middleSchool = document.querySelector("#middleSchoolInput").value.trim();
+  const quotaRankHint = document.querySelector("#quotaRankHint");
+  const quotaRankRows = state.data.quotaQualificationRanks || [];
+  const matched = quotaRankRows.find((row) => row.middleSchool === middleSchool);
+
+  if (matched) {
+    document.querySelector("#quotaRankInput").value = matched.rank;
+    quotaRankHint.textContent = `已从 ${matched.source || "配额资格排名表"} 自动读取。`;
+    return;
+  }
+
+  quotaRankHint.textContent = middleSchool
+    ? "暂未导入该初中的配额资格排名表，当前需按成绩页面中的“所在学校（单元）配额生资格排位”手动填写。"
+    : "填写毕业初中后，系统会尝试读取配额资格排名；当前未导入排名表时需手填。";
+}
+
+function usesAreaRank(school) {
+  const text = `${school.type} ${school.batch}`;
+  return (
+    text.includes("三区一地") ||
+    text.includes("统筹") ||
+    (text.includes("统招生") && !text.includes("面向全市")) ||
+    text.includes("花溪区") ||
+    text.includes("乌当区") ||
+    text.includes("白云区") ||
+    text.includes("清镇") ||
+    text.includes("息烽") ||
+    text.includes("修文") ||
+    text.includes("开阳") ||
+    text.includes("贵安")
+  );
+}
+
+function getHistoryAverage(school) {
+  if (!school.history.length) return null;
+  const scores = school.history.map((row) => Number(row.score)).filter(Boolean);
+  if (!scores.length) return null;
+  return scores.reduce((sum, score) => sum + score, 0) / scores.length;
+}
+
+function gradeRank(value) {
+  return { A: 4, B: 3, C: 2, D: 1 }[value] || 0;
+}
+
+function gradeAtLeast(value, target) {
+  return gradeRank(value) >= gradeRank(target);
+}
+
+function evaluateSubjectEligibility(subjects) {
+  const biologyGeographyGeneral = gradeAtLeast(subjects.biology, "C") && gradeAtLeast(subjects.geography, "C");
+  const biologyGeographyModel = gradeAtLeast(subjects.biology, "B") && gradeAtLeast(subjects.geography, "B");
+  const artInfoSubjects = [subjects.informationTechnology, subjects.music, subjects.art];
+  const artInfoGeneral = artInfoSubjects.every((value) => gradeAtLeast(value, "C")) && artInfoSubjects.filter((value) => gradeAtLeast(value, "B")).length >= 1;
+  const artInfoModel = artInfoSubjects.every((value) => gradeAtLeast(value, "B"));
+  const labsEligible = [subjects.physicsLab, subjects.chemistryLab, subjects.biologyLab].every((value) => value === "合格");
+  const generalEligible = biologyGeographyGeneral && artInfoGeneral && labsEligible;
+  const modelHighEligible = biologyGeographyModel && artInfoModel && labsEligible;
+  const riskItems = [];
+
+  if (!biologyGeographyGeneral) riskItems.push("地理/生物未达到普通高中最低门槛");
+  if (!artInfoGeneral) riskItems.push("音乐/美术/信息技术未达到普通高中最低门槛");
+  if (!labsEligible) riskItems.push("实验操作存在不合格");
+  if (generalEligible && !modelHighEligible) riskItems.push("未达到省级示范性普通高中门槛");
+
+  return {
+    generalEligible,
+    modelHighEligible,
+    riskItems,
+  };
+}
+
+function isModelHighCandidate(school) {
+  const text = `${school.batch} ${school.type} ${school.school}`;
+  return text.includes("第一批") || text.includes("配额") || text.includes("省级示范");
+}
+
+function calculateChance(school, form) {
+  const scoreDelta = form.score - school.score;
+  const lineRank = getDistributionRank(school.score);
+  const areaRankMode = usesAreaRank(school);
+  const activeRank = areaRankMode ? form.areaRank || form.estimatedAreaRank || form.rank : form.rank;
+  const rankScale = areaRankMode ? 80 : 140;
+  const rankDelta = activeRank && lineRank ? lineRank - activeRank : 0;
+  const rankAdjustment = activeRank && lineRank ? clamp(rankDelta / rankScale, -12, 14) : 0;
+  const historyAverage = getHistoryAverage(school);
+  const historyAdjustment = historyAverage ? clamp((form.score - historyAverage) * 0.25, -8, 8) : 0;
+  const quotaRankAdjustment = form.quotaRank ? clamp((80 - form.quotaRank) / 8, -8, 8) : 0;
+  const quotaAdjustment = form.hasQuota && school.type.includes("配额") ? 7 + quotaRankAdjustment : 0;
+  const subjectAdjustment = !form.subjectEligibility.generalEligible
+    ? -45
+    : isModelHighCandidate(school) && !form.subjectEligibility.modelHighEligible
+      ? -18
+      : 0;
+  const privateAdjustment = school.nature === "民办" && !form.acceptPrivate ? -35 : 0;
+  const batchAdjustment = school.batch.includes("提前") ? -4 : 0;
+  const raw = 50 + scoreDelta * 1.9 + rankAdjustment + historyAdjustment + quotaAdjustment + subjectAdjustment + privateAdjustment + batchAdjustment;
+  return clamp(raw, 1, 99);
+}
+
+function classifyBand(chance, delta) {
+  if (chance >= 85 && delta >= 8) return "保一保";
+  if (chance >= 65) return "稳一稳";
+  if (chance >= 42) return "冲一冲";
+  return "谨慎填报";
+}
+
+function riskLabel(chance) {
+  if (chance >= 85) return "低风险";
+  if (chance >= 65) return "中低风险";
+  if (chance >= 42) return "有挑战";
+  return "高风险";
+}
+
+function chanceClass(band) {
+  if (band === "保一保") return "safe";
+  if (band === "稳一稳") return "stable";
+  if (band === "冲一冲") return "reach";
+  return "risk";
+}
+
+function getQuotaMockCandidates() {
+  const quotaRows = state.data.quotaAllocations || state.data.quotaPlanAllocations || [];
+  if (!quotaRows.length) return [];
+  const firstBatchCandidates = state.data.schools.filter((school) => {
+    const text = `${school.batch} ${school.type}`;
+    return text.includes("第一批次") && text.includes("统招生") && !text.includes("中本贯通");
+  });
+  return firstBatchCandidates.filter((school) => hasQuotaAllocation(school, quotaRows));
+}
+
+function normalizeQuotaName(value) {
+  return String(value || "")
+    .replace(/[（(].*?[）)]/g, "")
+    .replace(/贵阳市/g, "贵阳")
+    .replace(/项目班|国际高中|中加|中美|中外|合作班/g, "")
+    .trim();
+}
+
+function hasQuotaAllocation(school, quotaRows) {
+  const schoolName = normalizeQuotaName(school.school);
+  return quotaRows.some((row) => {
+    const highSchool = normalizeQuotaName(row.highSchool || row.school || row.targetSchool || row["高中学校"] || row["招生学校"]);
+    return highSchool && (highSchool === schoolName || highSchool.includes(schoolName) || schoolName.includes(highSchool));
+  });
+}
+
+function estimateUnifiedReleaseAhead(school, form, unifiedChance) {
+  const quotaRank = form.quotaRank || 0;
+  if (!quotaRank || quotaRank <= 1) return 0;
+  const scoreDelta = form.score - school.score;
+  const baseRate = scoreDelta >= 18 ? 0.42 : scoreDelta >= 8 ? 0.32 : scoreDelta >= 0 ? 0.22 : scoreDelta >= -8 ? 0.12 : 0.05;
+  const chanceRate = unifiedChance >= 78 ? 0.14 : unifiedChance >= 58 ? 0.08 : unifiedChance >= 38 ? 0.04 : 0;
+  return clamp(Math.round((quotaRank - 1) * (baseRate + chanceRate)), 0, quotaRank - 1);
+}
+
+function calculateQuotaMock(school, form) {
+  if (!form.hasQuota) {
+    return {
+      quotaChance: 1,
+      unifiedChance: calculateChance(school, { ...form, hasQuota: false }),
+      unifiedLikely: false,
+      releasedAhead: 0,
+      effectiveQuotaRank: form.quotaRank || 0,
+      stageText: "未勾选配额资格",
+      detailText: "当前不进入配额模拟",
+    };
+  }
+  const scoreDelta = form.score - school.score;
+  const quotaRank = form.quotaRank || 999;
+  const unifiedChance = calculateChance(school, { ...form, hasQuota: false });
+  const releasedAhead = estimateUnifiedReleaseAhead(school, form, unifiedChance);
+  const effectiveQuotaRank = Math.max(1, quotaRank - releasedAhead);
+  const quotaRankAdjustment =
+    effectiveQuotaRank <= 20 ? 18 : effectiveQuotaRank <= 50 ? 10 : effectiveQuotaRank <= 80 ? 4 : effectiveQuotaRank <= 120 ? -4 : -12;
+  const lineRank = usesAreaRank(school) ? getRegionDistributionRank(school.score, form.region) : getDistributionRank(school.score);
+  const activeRank = usesAreaRank(school) ? form.areaRank || form.estimatedAreaRank || form.rank : form.rank;
+  const rankAdjustment = lineRank && activeRank ? clamp((lineRank - activeRank) / 120, -8, 10) : 0;
+  const subjectAdjustment = form.subjectEligibility.generalEligible ? (form.subjectEligibility.modelHighEligible ? 0 : -8) : -35;
+  const quotaRaw = 42 + scoreDelta * 1.1 + quotaRankAdjustment + rankAdjustment + subjectAdjustment;
+  const unifiedLikely = unifiedChance >= 78 && scoreDelta >= 0;
+  const quotaChance = unifiedLikely ? 1 : clamp(quotaRaw, 1, 88);
+  const stageText = unifiedLikely ? "第一阶段统招优先" : "第二阶段配额参考";
+  const detailText =
+    unifiedLikely
+      ? "按2025线模拟，可能先被统招录取；统招优先项不进入配额竞争列表"
+      : `未明显锁定统招时，再看配额；本校前排可能统招释放约 ${releasedAhead} 位，有效排位约 ${effectiveQuotaRank}`;
+
+  return {
+    quotaChance,
+    unifiedChance,
+    unifiedLikely,
+    releasedAhead,
+    effectiveQuotaRank,
+    stageText,
+    detailText,
+  };
+}
+
+function quotaMockLevel(chance) {
+  if (chance >= 78) return "配额重点参考";
+  if (chance >= 55) return "重点关注";
+  if (chance >= 35) return "可作为冲刺";
+  return "谨慎参考";
+}
+
+function quotaMockClass(chance) {
+  if (chance >= 78) return "safe";
+  if (chance >= 55) return "stable";
+  if (chance >= 35) return "reach";
+  return "risk";
+}
+
+function buildReason(school, form, chance) {
+  const delta = Math.round(form.score - school.score);
+  const lineRank = getDistributionRank(school.score);
+  const regionLineRank = getRegionDistributionRank(school.score, form.region);
+  const rankMode = usesAreaRank(school) ? "区域位次优先" : "全市位次优先";
+  const rankText = lineRank
+    ? `2025线约对应全市累计位次 ${lineRank}${regionLineRank ? `、${form.region}累计位次 ${regionLineRank}` : ""}，本项按${rankMode}评估`
+    : "暂无可用位次换算";
+  const planText = school.planTotal ? `计划约 ${school.planTotal} 人` : "计划待复核";
+  const historyText = school.history.length ? `已匹配 ${school.history.length} 条历史线` : "历史线匹配较少";
+  const quotaText = school.type.includes("配额")
+    ? `配额资格排位 ${form.quotaRank || "未填"}，需结合本校分配名额判断`
+    : "非配额类志愿";
+  const subjectText = buildSubjectReason(school, form);
+  return `比2025最低线${delta >= 0 ? "高" : "低"} ${Math.abs(delta)} 分，${rankText}，${planText}，${historyText}，${quotaText}，${subjectText}，风险标记为${riskLabel(chance)}。`;
+}
+
+function buildSubjectReason(school, form) {
+  const eligibility = form.subjectEligibility;
+  if (!eligibility.generalEligible) {
+    return `非计分科目存在普通高中资格风险：${eligibility.riskItems.join("、")}`;
+  }
+  if (isModelHighCandidate(school) && !eligibility.modelHighEligible) {
+    return "非计分科目未达到省级示范性普通高中门槛，第一批次或配额类志愿需重点核对";
+  }
+  return "非计分科目满足当前资格测算门槛";
+}
+
+function getFormValues() {
+  const score = Number(document.querySelector("#scoreInput").value || 0);
+  const region = document.querySelector("#regionInput").value;
+  const manualAreaRank = Number(document.querySelector("#areaRankInput").value || 0);
+  const nonScoreSubjects = {
+    biology: document.querySelector("#biologyInput").value,
+    geography: document.querySelector("#geographyInput").value,
+    informationTechnology: document.querySelector("#itInput").value,
+    music: document.querySelector("#musicInput").value,
+    art: document.querySelector("#artInput").value,
+    physicsLab: document.querySelector("#physicsLabInput").value,
+    chemistryLab: document.querySelector("#chemistryLabInput").value,
+    biologyLab: document.querySelector("#biologyLabInput").value,
+  };
+  const subjectEligibility = evaluateSubjectEligibility(nonScoreSubjects);
+  return {
+    score,
+    rank: Number(document.querySelector("#rankInput").value || 0),
+    areaRank: manualAreaRank,
+    estimatedAreaRank: getRegionDistributionRank(score, region),
+    region,
+    middleSchool: document.querySelector("#middleSchoolInput").value.trim(),
+    quotaRank: Number(document.querySelector("#quotaRankInput").value || 0),
+    hasQuota: document.querySelector("#quotaInput").checked,
+    acceptPrivate: document.querySelector("#privateInput").checked,
+    nonScoreSubjects,
+    subjectEligibility,
+  };
+}
+
+function addressText(school) {
+  if (school.address) return `校址：${school.address}`;
+  return `校址：${school.addressStatus || "地址待补充"}`;
+}
+
+function showResultDialog() {
+  const dialog = document.querySelector("#resultDialog");
+  if (!dialog) return;
+  if (typeof dialog.showModal === "function") {
+    if (!dialog.open) dialog.showModal();
+    return;
+  }
+  dialog.setAttribute("open", "");
+}
+
+function closeResultDialog() {
+  const dialog = document.querySelector("#resultDialog");
+  if (!dialog) return;
+  if (typeof dialog.close === "function") {
+    dialog.close();
+    return;
+  }
+  dialog.removeAttribute("open");
+}
+
+function buildResultSummary(results) {
+  const bandCounts = bandOrder.reduce((summary, band) => {
+    summary[band] = results.filter((item) => item.band === band).length;
+    return summary;
+  }, {});
+  return {
+    total: results.length,
+    bandCounts,
+    topSchools: results.slice(0, 8).map((item) => ({
+      school: item.school,
+      batch: item.batch,
+      type: item.type,
+      score: item.score,
+      chance: Math.round(item.chance),
+      band: item.band,
+      risk: item.risk,
+    })),
+  };
+}
+
+async function saveCalculatorSubmission(form, results) {
+  if (!state.user) return;
+  try {
+    await authFetch("/api/calculator-submissions", {
+      method: "POST",
+      body: JSON.stringify({
+        form,
+        resultSummary: buildResultSummary(results),
+      }),
+    });
+    loadAdminSubmissions();
+  } catch (error) {
+    console.warn("测算表单保存失败", error);
+  }
+}
+
+function enableResultReplay() {
+  const button = document.querySelector("#openResultsButton");
+  if (button) button.disabled = false;
+}
+
+function runCalculation(options = {}) {
+  const shouldOpenDialog = options.openDialog !== false;
+  state.hasCalculated = true;
+  const form = getFormValues();
+  const results = state.data.schools
+    .filter((school) => school.dataQuality !== "OCR待复核")
+    .map((school) => {
+      const chance = calculateChance(school, form);
+      const delta = form.score - school.score;
+      const band = classifyBand(chance, delta);
+      return {
+        ...school,
+        chance,
+        delta,
+        band,
+        risk: riskLabel(chance),
+        reason: buildReason(school, form, chance),
+      };
+    })
+    .filter((school) => form.acceptPrivate || school.nature !== "民办")
+    .sort((a, b) => b.chance - a.chance || b.score - a.score);
+
+  state.results = results;
+  if (!results.some((item) => item.band === state.currentBand)) {
+    state.currentBand = bandOrder.find((band) => results.some((item) => item.band === band)) || "稳一稳";
+  }
+  renderResults(form);
+  enableResultReplay();
+  if (shouldOpenDialog) saveCalculatorSubmission(form, results);
+  if (shouldOpenDialog) showResultDialog();
+}
+
+function renderEmptyResults() {
+  state.results = [];
+  document.querySelector("#resultTitle").textContent = "等待测算";
+  document.querySelector("#rankChip").textContent = "填写信息后点击重新测算";
+  document.querySelector("#subjectChip").textContent = "非计分资格待计算";
+  document.querySelector("#quotaSummary").innerHTML = `
+    <div><strong>配额模拟待计算</strong><span>填写分数、毕业初中、配额资格排位后，点击重新测算。</span></div>
+    <div><strong>核心逻辑</strong><span>先看统招是否可能录取，再看配额阶段的有效排位。</span></div>
+  `;
+  document.querySelector("#quotaList").innerHTML = `<div class="quota-empty">点击重新测算后展示配额模拟结果。</div>`;
+  document.querySelector("#bandTabs").innerHTML = "";
+  document.querySelector("#resultList").innerHTML = `<div class="empty-card">点击重新测算后展示统招路径下的志愿推荐结果。</div>`;
+}
+
+function renderMetrics() {
+  const admissionCount = state.data.schools.length;
+  const schoolCount = new Set(state.data.schools.map((school) => school.school)).size;
+  const planCount = state.data.schools.filter((school) => school.planTotal > 0).length;
+  const scoreRows = state.data.scoreDistribution.length;
+  const historyCount = state.data.schools.reduce((sum, school) => sum + school.history.length, 0);
+  const metrics = [
+    ["2025年录取信息", admissionCount, `已结构化约 ${schoolCount} 所学校的录取结果，含统招、配额、项目班等类型`],
+    ["2025招生计划关联", planCount, "这些录取记录已能参考对应学校的招生计划"],
+    ["2025位次换算行数", scoreRows, "来自全市一分一段表，用于分数与位次换算"],
+    ["2023-2024历史参考", historyCount, "已匹配到学校库的往年录取线记录"],
+  ];
+  document.querySelector("#metrics").innerHTML = metrics
+    .map(
+      ([label, value, note]) => `
+        <div class="metric">
+          <span>${label}</span>
+          <strong>${value}</strong>
+          <span>${note}</span>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function renderSourceOverview() {
+  const sources = state.data.dataSources || [];
+  const inventory = state.data.dataInventory || [];
+  if (!sources.length) {
+    document.querySelector("#sourceOverview").innerHTML = `
+      <div class="source-overview-head">
+        <strong>数据来源清单未加载</strong>
+        <span>请刷新页面或检查 2025-simulation.json 是否为最新数据包。</span>
+      </div>
+    `;
+    return;
+  }
+  const years = uniqueValues(sources.map((source) => source.year)).sort();
+  const totalInventoryRows = inventory.reduce((sum, item) => sum + Number(item.count || 0), 0);
+  const overviewCards = inventory.length
+    ? inventory
+    : years.map((year) => {
+        const yearSources = sources.filter((source) => source.year === year);
+        const categories = uniqueValues(yearSources.map((source) => source.category));
+        const usages = uniqueValues(yearSources.map((source) => source.usage)).slice(0, 2);
+        return {
+          label: `${year}年度资料`,
+          count: yearSources.length,
+          unit: "项",
+          detail: `${categories.join("、")}；${usages.join("；")}`,
+        };
+      });
+
+  document.querySelector("#sourceOverview").innerHTML = `
+    <div class="source-overview-head">
+      <strong>已采集整理 ${sources.length} 项公开资料，结构化 ${totalInventoryRows || sources.length} 条/行数据</strong>
+      <span>覆盖 ${years.join("、")} 年度，包含政策规则、控制线、招生计划、学校录取线、分数段、区域位次、资格规则和学校地址等信息。</span>
+    </div>
+    <div class="source-year-grid">
+      ${overviewCards
+        .map(
+          (item) => `
+            <article class="source-year-card">
+              <strong>${Number(item.count || 0).toLocaleString()} ${item.unit || "条"}</strong>
+              <span>${item.label}</span>
+              <p>${item.detail}${item.sourceFile ? ` 来源：${item.sourceFile}` : ""}</p>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function sourceStatusClass(status) {
+  if (status.includes("已接入") || status.includes("已纳入") || status.includes("已解析") || status.includes("通过")) return "ready";
+  if (status.includes("待") || status.includes("复核")) return "review";
+  return "normal";
+}
+
+function renderDataSources() {
+  const sources = state.data.dataSources || [];
+  document.querySelector("#sourceList").innerHTML = sources.length
+    ? sources
+        .map(
+          (source) => `
+            <article class="source-card">
+              <div class="source-main">
+                <div class="source-head">
+                  <span class="source-year">${source.year}</span>
+                  <strong>${source.category}</strong>
+                  <span class="source-status ${sourceStatusClass(source.status)}">${source.status}</span>
+                </div>
+                <p>${source.title}</p>
+                <span>${source.usage}</span>
+              </div>
+              <a href="${source.url}" target="_blank" rel="noopener noreferrer">查看来源</a>
+            </article>
+          `,
+        )
+        .join("")
+    : `<div class="form-note">暂无来源清单。</div>`;
+}
+
+function renderBandTabs() {
+  const counts = Object.fromEntries(bandOrder.map((band) => [band, 0]));
+  state.results.forEach((item) => {
+    counts[item.band] += 1;
+  });
+  document.querySelector("#bandTabs").innerHTML = bandOrder
+    .map(
+      (band) => `
+        <button class="band-tab ${band === state.currentBand ? "active" : ""}" type="button" data-band="${band}">
+          <strong>${band}</strong>
+          <span>${counts[band]} 个志愿项</span>
+        </button>
+      `,
+    )
+    .join("");
+  document.querySelectorAll(".band-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.currentBand = button.dataset.band;
+      renderResults(getFormValues());
+    });
+  });
+}
+
+function renderResults(form) {
+  const rankFromScore = getDistributionRank(form.score);
+  const title = `${form.score} 分模拟测算`;
+  document.querySelector("#resultTitle").textContent = title;
+  const areaRankText = form.areaRank
+    ? `${form.areaRank} 名`
+    : form.estimatedAreaRank
+      ? `按${form.region}分数段约 ${form.estimatedAreaRank} 名内`
+      : "未填";
+  document.querySelector("#rankChip").textContent = rankFromScore
+    ? `全市约 ${rankFromScore} 名内，区域位次 ${areaRankText}`
+    : "暂无分数段位次";
+  document.querySelector("#subjectChip").textContent = form.subjectEligibility.generalEligible
+    ? form.subjectEligibility.modelHighEligible
+      ? "非计分：普高/示范门槛通过"
+      : "非计分：普高通过，示范需核对"
+    : "非计分：普通高中资格风险";
+
+  renderQuotaSimulation(form);
+  renderBandTabs();
+  const list = state.results.filter((item) => item.band === state.currentBand).slice(0, 12);
+  document.querySelector("#resultList").innerHTML = list.length
+    ? list
+        .map(
+          (item) => `
+            <article class="school-card ${chanceClass(item.band)}-card">
+              <div>
+                <h3>${item.school}</h3>
+                <div class="school-meta">
+                  <span class="tag">${item.batch}</span>
+                  <span class="tag">${item.type}</span>
+                  <span class="tag">${item.nature}</span>
+                  <span class="tag">2025线 ${item.score}</span>
+                  <span class="tag">差值 ${item.delta >= 0 ? "+" : ""}${Math.round(item.delta)}</span>
+                </div>
+                <p class="school-address">${addressText(item)}</p>
+                <p class="reason">${item.reason}</p>
+              </div>
+              <div class="chance ${chanceClass(item.band)}">
+                <strong>${formatPercent(item.chance)}</strong>
+                <span>录取机会</span>
+              </div>
+            </article>
+          `,
+        )
+        .join("")
+    : `<div class="empty-card">当前分组暂无结果，可调整分数、位次或偏好后重新测算。</div>`;
+}
+
+function renderQuotaSimulation(form) {
+  const quotaItems = getQuotaMockCandidates()
+    .map((school) => {
+      const quotaMock = calculateQuotaMock(school, form);
+      return {
+        ...school,
+        ...quotaMock,
+        quotaLevel: quotaMockLevel(quotaMock.quotaChance),
+        quotaClass: quotaMockClass(quotaMock.quotaChance),
+      };
+    });
+  const candidates = quotaItems
+    .filter((school) => !school.unifiedLikely && school.quotaChance > 1)
+    .sort((a, b) => b.quotaChance - a.quotaChance || b.score - a.score)
+    .slice(0, 8);
+
+  document.querySelector("#quotaSummary").innerHTML = `
+    <div><strong>毕业初中/单元</strong><span>${form.middleSchool || "未填写"}</span></div>
+    <div><strong>配额资格排位</strong><span>${form.quotaRank || "未填写"}</span></div>
+    <div><strong>配额数据</strong><span>当前未导入高中到初中的配额分配表</span></div>
+    <div><strong>第二阶段</strong><span>导入本校配额名额后，再按有效排位竞争</span></div>
+  `;
+
+  document.querySelector("#quotaList").innerHTML = form.hasQuota
+    ? candidates.length
+      ? candidates
+        .map(
+          (school) => `
+            <article class="quota-card ${school.quotaClass}">
+              <div>
+                <h3>${school.school}</h3>
+                <p>${school.batch} / ${school.type}</p>
+                <p class="school-address">${addressText(school)}</p>
+                <div class="quota-tags">
+                  <span>2025线 ${school.score}</span>
+                  <span>统招参考 ${formatPercent(school.unifiedChance)}</span>
+                  <span>有效排位约 ${school.effectiveQuotaRank}</span>
+                  <span>${school.planTotal ? `学校计划约 ${school.planTotal} 人` : "计划未匹配"}</span>
+                  <span>本校配额名额待导入</span>
+                </div>
+                <p class="quota-stage">${school.stageText}：${school.detailText}</p>
+              </div>
+              <div class="quota-score">
+                <strong>${formatPercent(school.quotaChance)}</strong>
+                <span>${school.quotaLevel}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join("")
+      : `<div class="quota-empty">当前没有可展示的配额学校。原因是尚未导入“高中-初中配额分配表”，系统不能把只有统招计划的学校当作配额学校推荐。</div>`
+    : `<div class="quota-empty">当前未勾选具备配额资格。勾选后可进行配额模拟。</div>`;
+}
+
+function renderSchoolTable(filter = "") {
+  const keyword = filter.trim().toLowerCase();
+  const rows = state.data.schools
+    .filter((school) => `${school.school} ${school.type} ${school.batch}`.toLowerCase().includes(keyword))
+    .slice(0, 120);
+  document.querySelector("#schoolTable").innerHTML = rows
+    .map(
+      (school) => `
+        <tr>
+          <td>${school.school}</td>
+          <td>${school.batch}</td>
+          <td>${school.type}</td>
+          <td>${school.score}</td>
+          <td>${school.planTotal || "计划未匹配"}</td>
+          <td>${school.nature}</td>
+          <td>${school.address || school.addressStatus || "地址待补充"}</td>
+        </tr>
+      `,
+    )
+    .join("");
+}
+
+function formatDateTime(timestamp) {
+  if (!timestamp) return "未记录";
+  const date = new Date(Number(timestamp) * 1000);
+  return date.toLocaleString("zh-CN", { hour12: false });
+}
+
+function setupAdminSubmissionPanel() {
+  if (!isAdmin()) return;
+  if (document.querySelector("#submissionTable")) return;
+  const dataSection = document.querySelector("#data");
+  if (!dataSection) return;
+  dataSection.insertAdjacentHTML(
+    "beforeend",
+    `
+      <div class="panel admin-submissions-panel">
+        <div class="panel-title">
+          <div>
+            <p class="eyebrow">Parent Submissions</p>
+            <h2>用户测算表单</h2>
+          </div>
+          <button class="secondary-action compact-action" id="refreshSubmissionsButton" type="button">刷新</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>提交时间</th>
+                <th>手机号</th>
+                <th>分数</th>
+                <th>区域</th>
+                <th>毕业初中</th>
+                <th>全市/区位次</th>
+                <th>配额排位</th>
+                <th>推荐摘要</th>
+              </tr>
+            </thead>
+            <tbody id="submissionTable">
+              <tr><td colspan="8">暂无提交记录</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `,
+  );
+  document.querySelector("#refreshSubmissionsButton").addEventListener("click", loadAdminSubmissions);
+}
+
+async function loadAdminSubmissions() {
+  const table = document.querySelector("#submissionTable");
+  if (!table || !state.user || !isAdmin()) return;
+  try {
+    const payload = await authFetch("/api/admin/calculator-submissions?limit=80");
+    const items = payload.items || [];
+    table.innerHTML = items.length
+      ? items
+          .map((item) => {
+            const topSchools = item.resultSummary?.topSchools || [];
+            const summary = topSchools.length
+              ? topSchools.slice(0, 3).map((school) => `${school.school} ${school.chance}%`).join(" / ")
+              : "暂无推荐摘要";
+            return `
+              <tr>
+                <td>${formatDateTime(item.createdAt)}</td>
+                <td>${item.maskedPhone}</td>
+                <td>${item.score}</td>
+                <td>${item.region || "未填"}</td>
+                <td>${item.middleSchool || "未填"}</td>
+                <td>${item.rank || "未填"} / ${item.areaRank || item.estimatedAreaRank || "未填"}</td>
+                <td>${item.hasQuota ? item.quotaRank || "未填" : "未勾选"}</td>
+                <td>${summary}</td>
+              </tr>
+            `;
+          })
+          .join("")
+      : `<tr><td colspan="8">暂无提交记录</td></tr>`;
+  } catch (error) {
+    table.innerHTML = `<tr><td colspan="8">表单记录读取失败：${error.message}</td></tr>`;
+  }
+}
+
+async function startApp() {
+  setupAccountPanel();
+  updateAuthVisibility();
+  if (state.appReady) {
+    setActivePage(getRequestedPage(), { replace: true });
+    return;
+  }
+  initNavigation();
+  const response = await fetch(`./data/2025-simulation.json?v=${Date.now()}`, { cache: "no-store" });
+  state.data = await response.json();
+  document.querySelector("#dataStatus").textContent = "2025 数据已加载";
+  renderMetrics();
+  renderSourceOverview();
+  renderDataSources();
+  renderSchoolTable();
+  updateAutoRankInputs();
+  updateQuotaRankHint();
+  renderEmptyResults();
+  [
+    ["#scoreInput", "input"],
+    ["#regionInput", "change"],
+  ].forEach(([selector, eventName]) => {
+    document.querySelector(selector).addEventListener(eventName, () => {
+      updateAutoRankInputs();
+      if (state.hasCalculated) runCalculation({ openDialog: false });
+    });
+  });
+  document.querySelector("#middleSchoolInput").addEventListener("input", () => {
+    updateQuotaRankHint();
+    if (state.hasCalculated) runCalculation({ openDialog: false });
+  });
+  document.querySelector("#calcForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    updateAutoRankInputs();
+    updateQuotaRankHint();
+    runCalculation();
+  });
+  document.querySelector("#openResultsButton").addEventListener("click", () => {
+    if (state.hasCalculated) showResultDialog();
+  });
+  document.querySelector("#resultDialogClose").addEventListener("click", closeResultDialog);
+  document.querySelector("#resultDialog").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeResultDialog();
+  });
+  document.querySelector("#schoolSearch").addEventListener("input", (event) => {
+    renderSchoolTable(event.target.value);
+  });
+  state.appReady = true;
+  updateAuthVisibility();
+}
+
+async function init() {
+  setupAuthUi();
+  state.user = await loadCurrentUser();
+  updateAuthVisibility();
+  if (state.user) {
+    await startApp();
+  }
+}
+
+init().catch((error) => {
+  document.querySelector("#dataStatus").textContent = "数据加载失败";
+  document.querySelector("#resultList").innerHTML = `<div class="panel form-note">${error.message}</div>`;
+});

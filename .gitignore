@@ -1,0 +1,25 @@
+# Python/runtime cache
+__pycache__/
+*.py[cod]
+
+# Local database and runtime logs
+server/*.db
+server/*.db-*
+server/*.log
+server/*.err
+server/sms_config.json
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Generated research/OCR artifacts
+outputs/
+work/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

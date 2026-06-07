@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17152e" />
+    <title>贵阳中考志愿填报操作台</title>
+    <link rel="stylesheet" href="./styles.css?v=20260606-auth-title-red-new" />
+  </head>
+  <body>
+    <a class="skip-link" href="#mainContent">跳到主要内容</a>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-logo" src="./assets/youxueku-logo.png" alt="优学库" />
+          <div>
+            <strong>贵阳中考志愿</strong>
+            <span>填报操作台</span>
+          </div>
+        </div>
+        <nav class="nav">
+          <a href="?page=calculator" class="active" data-page="calculator" aria-current="page">家长测算</a>
+          <a href="?page=dashboard" data-page="dashboard">数据依据</a>
+          <a href="?page=schools" data-page="schools">学校库</a>
+          <a href="?page=data" data-page="data">数据管理</a>
+        </nav>
+      </aside>
+
+      <main class="workspace" id="mainContent">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">2025 模拟测试版</p>
+            <h1>贵阳中考志愿填报一体化操作台</h1>
+            <p class="topbar-copy">以分数、位次、统招路径和配额路径为主线，先完成家长测算，再查看数据依据。</p>
+          </div>
+          <div class="status-pill" id="dataStatus" aria-live="polite">数据加载中</div>
+        </header>
+
+        <section id="calculator" class="section calculator-layout" data-route>
+          <form class="panel input-panel" id="calcForm">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">Parent Test</p>
+                <h2>家长测算输入</h2>
+              </div>
+            </div>
+            <div class="calc-form-grid">
+              <div class="field-group primary-group">
+                <strong>基础信息</strong>
+                <div class="mini-grid">
+                  <label>
+                    <span>中考总分</span>
+                    <input id="scoreInput" name="score" type="number" inputmode="decimal" min="0" max="750" value="683" autocomplete="off" />
+                  </label>
+                  <label>
+                    <span>报考区域</span>
+                    <select id="regionInput" name="region" autocomplete="off">
+                      <option>三区一地</option>
+                      <option>花溪区</option>
+                      <option>乌当区</option>
+                      <option>白云区</option>
+                      <option>清镇市</option>
+                      <option>息烽县</option>
+                      <option>修文县</option>
+                      <option>开阳县</option>
+                      <option>贵安新区</option>
+                    </select>
+                  </label>
+                  <label class="wide-field">
+                    <span>毕业初中</span>
+                    <input id="middleSchoolInput" name="middleSchool" type="text" value="示例初中" autocomplete="off" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="field-group rank-group">
+                <strong>位次与配额</strong>
+                <div class="mini-grid">
+                  <label>
+                    <span>全市位次（自动换算，可手改）</span>
+                    <input id="rankInput" name="cityRank" type="number" inputmode="numeric" min="1" value="682" autocomplete="off" />
+                    <small class="field-note" id="cityRankHint">按当前分数自动换算全市位次。</small>
+                  </label>
+                  <label>
+                    <span>区域位次（自动换算，可手改）</span>
+                    <input id="areaRankInput" name="areaRank" type="number" inputmode="numeric" min="1" value="623" autocomplete="off" />
+                    <small class="field-note" id="areaRankHint">按当前分数和报考区域自动换算。</small>
+                  </label>
+                  <label class="wide-field">
+                    <span>所在学校（单元）配额生资格排位</span>
+                    <input id="quotaRankInput" name="quotaRank" type="number" inputmode="numeric" min="1" value="48" autocomplete="off" />
+                    <small class="field-note" id="quotaRankHint">当前需手动填写；导入初中配额资格排名表后可自动读取。</small>
+                  </label>
+                </div>
+                <div class="switch-row inline-switches">
+                  <label><input id="quotaInput" name="hasQuota" type="checkbox" checked /> 具备配额资格</label>
+                  <label><input id="privateInput" name="acceptPrivate" type="checkbox" checked /> 接受民办</label>
+                </div>
+              </div>
+
+              <div class="field-group subject-group">
+                <strong>非计分科目</strong>
+                <div class="mini-grid">
+                  <label>
+                    <span>生物</span>
+                    <select id="biologyInput" name="biology" autocomplete="off"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+                  </label>
+                  <label>
+                    <span>地理</span>
+                    <select id="geographyInput" name="geography" autocomplete="off"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+                  </label>
+                  <label>
+                    <span>信息技术</span>
+                    <select id="itInput" name="informationTechnology" autocomplete="off"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+                  </label>
+                  <label>
+                    <span>音乐</span>
+                    <select id="musicInput" name="music" autocomplete="off"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+                  </label>
+                  <label>
+                    <span>美术</span>
+                    <select id="artInput" name="art" autocomplete="off"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+                  </label>
+                  <label>
+                    <span>物理实验</span>
+                    <select id="physicsLabInput" name="physicsLab" autocomplete="off"><option>合格</option><option>不合格</option></select>
+                  </label>
+                  <label>
+                    <span>化学实验</span>
+                    <select id="chemistryLabInput" name="chemistryLab" autocomplete="off"><option>合格</option><option>不合格</option></select>
+                  </label>
+                  <label>
+                    <span>生物实验</span>
+                    <select id="biologyLabInput" name="biologyLab" autocomplete="off"><option>合格</option><option>不合格</option></select>
+                  </label>
+                </div>
+              </div>
+
+            </div>
+            <div class="form-actions">
+              <button type="submit">重新测算</button>
+              <button class="secondary-action" id="openResultsButton" type="button" disabled>查看上次结果</button>
+              <p class="form-note">概率为规则估算，不代表录取承诺；非计分科目和配额排位用于资格风险提示。</p>
+            </div>
+          </form>
+
+          <aside class="panel calculator-guide">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">Workflow</p>
+                <h2>测算流程</h2>
+              </div>
+            </div>
+            <div class="guide-steps">
+              <div>
+                <strong>1. 填写成绩与位次</strong>
+                <span>分数会自动换算全市位次和区域位次，700分以上会按公开最高档提示。</span>
+              </div>
+              <div>
+                <strong>2. 核对配额资格</strong>
+                <span>毕业初中和配额生资格排位会影响配额路径，需要和成绩页保持一致。</span>
+              </div>
+              <div>
+                <strong>3. 点击重新测算</strong>
+                <span>统招路径和配额路径会在弹框中并排展示，避免主页面堆满结果。</span>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <dialog class="result-dialog" id="resultDialog" aria-labelledby="resultDialogTitle">
+          <div class="dialog-frame">
+            <div class="dialog-head">
+              <div>
+                <p class="eyebrow">Simulation Result</p>
+                <h2 id="resultDialogTitle">测算结果</h2>
+              </div>
+              <button class="dialog-close" id="resultDialogClose" type="button" aria-label="关闭测算结果">关闭</button>
+            </div>
+            <div class="panel result-summary">
+              <div>
+                <p class="eyebrow">Simulation Result</p>
+                <h2 id="resultTitle">等待测算</h2>
+              </div>
+              <div class="summary-chips">
+                <div class="rank-chip" id="rankChip">位次参考计算中</div>
+                <div class="rank-chip subject-chip" id="subjectChip">非计分资格计算中</div>
+              </div>
+            </div>
+            <div class="pathway-grid">
+              <section class="panel unified-panel">
+                <div class="pathway-head">
+                  <div>
+                    <p class="eyebrow">Unified Admission</p>
+                    <h2>统招路径</h2>
+                  </div>
+                  <span class="quota-badge">先统招</span>
+                </div>
+                <div class="band-tabs" id="bandTabs"></div>
+                <div class="result-list" id="resultList" aria-live="polite"></div>
+              </section>
+              <section class="panel quota-panel">
+                <div class="quota-head">
+                  <div>
+                    <p class="eyebrow">Quota Simulation</p>
+                    <h2>配额路径</h2>
+                  </div>
+                  <span class="quota-badge">后配额</span>
+                </div>
+                <div class="quota-summary" id="quotaSummary"></div>
+                <div class="quota-list" id="quotaList" aria-live="polite"></div>
+              </section>
+            </div>
+          </div>
+        </dialog>
+
+        <section id="dashboard" class="section dashboard-grid" data-route hidden>
+          <div class="panel summary-panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">Data Coverage</p>
+                <h2>当前测算采用的数据</h2>
+              </div>
+            </div>
+            <div class="source-overview" id="sourceOverview"></div>
+            <div class="metrics" id="metrics"></div>
+            <div class="source-panel">
+              <div class="source-panel-title">
+                <div>
+                  <strong>数据依据与来源</strong>
+                  <span>展示已收集、清洗和接入的公开资料来源</span>
+                </div>
+              </div>
+              <div class="source-list" id="sourceList"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="schools" class="section panel" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">School Library</p>
+              <h2>学校库</h2>
+            </div>
+            <input class="search" id="schoolSearch" name="schoolSearch" type="search" placeholder="搜索学校或招生类型…" autocomplete="off" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>学校</th>
+                  <th>批次</th>
+                  <th>招生类型</th>
+                  <th>2025线</th>
+                  <th>计划</th>
+                  <th>性质</th>
+                  <th>地址</th>
+                </tr>
+              </thead>
+              <tbody id="schoolTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="data" class="section data-grid" data-route hidden>
+          <div class="panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">Import Slots</p>
+                <h2>2026 待导入</h2>
+              </div>
+            </div>
+            <div class="import-slots">
+              <div><strong>招生计划明细</strong><span>统招、配额、定向、特长、项目班</span></div>
+              <div><strong>初中配额分配表</strong><span>按毕业初中和高中匹配名额</span></div>
+              <div><strong>分数段统计</strong><span>成绩公布后换算位次</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">Review Queue</p>
+                <h2>复核队列</h2>
+              </div>
+            </div>
+            <div class="review-list">
+              <div><strong>2023-2025 录取线</strong><span>官方图片 OCR，重点复核学校名称</span></div>
+              <div><strong>2024 分数段</strong><span>OCR 原始结果已保留，暂不作为核心算法</span></div>
+              <div><strong>2025 招生计划</strong><span>总数已对齐，明细可继续抽样</span></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="./app.js?v=20260606-admin-page"></script>
+  </body>
+</html>

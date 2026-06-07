@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17152e" />
+    <title>后台管理 - 贵阳中考志愿填报操作台</title>
+    <link rel="stylesheet" href="./admin.css?v=20260606-inner-split-theme" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <aside class="admin-sidebar">
+        <img class="admin-logo" src="./assets/youxueku-logo.png" alt="优学库" />
+        <div>
+          <p>Admin Console</p>
+          <h1>后台管理</h1>
+        </div>
+        <nav>
+          <a class="active" href="/admin">用户测算表单</a>
+          <a href="/">返回操作台</a>
+        </nav>
+      </aside>
+
+      <section class="admin-workspace">
+        <header class="admin-topbar">
+          <div>
+            <p class="eyebrow">Parent Submission Records</p>
+            <h2>用户测算表单</h2>
+            <span>仅管理员账号可访问用户测算表单。</span>
+          </div>
+          <div class="admin-actions" id="adminActions" hidden>
+            <strong id="adminPhone"></strong>
+            <button id="refreshButton" type="button">刷新</button>
+            <button id="exportButton" type="button">导出</button>
+            <button id="logoutButton" type="button">退出</button>
+          </div>
+        </header>
+
+        <section class="admin-card" id="adminLoginPanel">
+          <div class="admin-card-head">
+            <div>
+              <p class="eyebrow">Admin Login</p>
+              <h3>管理员登录</h3>
+            </div>
+          </div>
+          <form class="admin-login-form" id="adminLoginForm">
+            <label>
+              <span>管理员手机号</span>
+              <input id="adminLoginPhone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="请输入管理员手机号..." />
+            </label>
+            <label>
+              <span>密码</span>
+              <input id="adminLoginPassword" type="password" autocomplete="current-password" placeholder="请输入密码..." />
+            </label>
+            <button type="submit">进入后台</button>
+          </form>
+          <p class="admin-message" id="adminMessage">此后台只用于查看家长提交的测算表单。</p>
+        </section>
+
+        <section class="admin-content" id="adminContent" hidden>
+          <section class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="eyebrow">Filters</p>
+                <h3>筛选记录</h3>
+              </div>
+            </div>
+            <form class="admin-filter-form" id="filterForm">
+              <label>
+                <span>手机号</span>
+                <input id="filterPhone" type="search" inputmode="numeric" placeholder="输入手机号..." />
+              </label>
+              <label>
+                <span>区域</span>
+                <input id="filterRegion" type="search" placeholder="如 三区一地..." />
+              </label>
+              <label>
+                <span>毕业初中</span>
+                <input id="filterMiddleSchool" type="search" placeholder="输入初中名称..." />
+              </label>
+              <label>
+                <span>跟进状态</span>
+                <select id="filterFollowStatus">
+                  <option value="">全部</option>
+                  <option>未联系</option>
+                  <option>已联系</option>
+                  <option>已预约</option>
+                  <option>已成交</option>
+                  <option>无效</option>
+                </select>
+              </label>
+              <label>
+                <span>最低分</span>
+                <input id="filterScoreMin" type="number" inputmode="numeric" placeholder="如 600" />
+              </label>
+              <label>
+                <span>最高分</span>
+                <input id="filterScoreMax" type="number" inputmode="numeric" placeholder="如 700" />
+              </label>
+              <div class="filter-actions">
+                <button type="submit">筛选</button>
+                <button id="resetFilterButton" type="button">重置</button>
+              </div>
+            </form>
+          </section>
+
+          <div class="admin-stats">
+            <div><span>提交记录</span><strong id="totalCount">0</strong></div>
+            <div><span>今日提交</span><strong id="todayCount">0</strong></div>
+            <div><span>平均分</span><strong id="averageScore">-</strong></div>
+          </div>
+
+          <section class="admin-card">
+            <div class="admin-card-head">
+              <div>
+                <p class="eyebrow">Submission Table</p>
+                <h3>最近用户记录</h3>
+              </div>
+            </div>
+            <div class="admin-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>提交时间</th>
+                    <th>手机号</th>
+                    <th>分数</th>
+                    <th>区域</th>
+                    <th>毕业初中</th>
+                    <th>全市/区位次</th>
+                    <th>配额排位</th>
+                    <th>跟进状态</th>
+                    <th>推荐摘要</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="submissionRows">
+                  <tr><td colspan="10">暂无记录</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+    <dialog class="admin-dialog" id="detailDialog">
+      <form method="dialog" class="admin-dialog-frame">
+        <div class="admin-dialog-head">
+          <div>
+            <p class="eyebrow">Submission Detail</p>
+            <h3>测算详情与跟进</h3>
+          </div>
+          <button value="close" type="submit">关闭</button>
+        </div>
+        <div class="detail-grid" id="detailContent"></div>
+        <div class="follow-editor">
+          <label>
+            <span>跟进状态</span>
+            <select id="detailFollowStatus">
+              <option>未联系</option>
+              <option>已联系</option>
+              <option>已预约</option>
+              <option>已成交</option>
+              <option>无效</option>
+            </select>
+          </label>
+          <label>
+            <span>管理员备注</span>
+            <textarea id="detailAdminNote" rows="4" placeholder="记录沟通情况、家长意向或下一步安排..."></textarea>
+          </label>
+          <button id="saveDetailButton" type="button">保存跟进</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="./admin.js?v=20260606-admin-crm"></script>
+  </body>
+</html>
