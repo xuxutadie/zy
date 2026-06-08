@@ -219,6 +219,23 @@ def load_sms_config() -> dict:
     return {**default_config, **custom_config}
 
 
+def parse_spug_sms_response(response_text: str) -> tuple[bool, str]:
+    try:
+        payload = json.loads(response_text)
+    except json.JSONDecodeError:
+        return True, "短信平台已返回非 JSON 响应"
+
+    provider_code = payload.get("code")
+    provider_message = str(payload.get("msg") or payload.get("message") or payload.get("error") or "").strip()
+    if provider_code in (0, "0", 200, "200") or payload.get("success") is True or payload.get("ok") is True:
+        return True, provider_message or "短信平台已受理"
+
+    if provider_code is None:
+        return True, provider_message or "短信平台已返回响应"
+
+    return False, provider_message or f"短信平台返回失败：{provider_code}"
+
+
 def send_sms_code(phone: str, code: str) -> tuple[bool, str]:
     config = load_sms_config()
     if not config.get("enabled"):
@@ -244,6 +261,10 @@ def send_sms_code(phone: str, code: str) -> tuple[bool, str]:
             response_text = response.read().decode("utf-8", errors="replace")
             if response.status >= 400:
                 return False, f"短信平台返回异常：{response.status}"
+            provider_ok, provider_message = parse_spug_sms_response(response_text)
+            if not provider_ok:
+                print(f"[短信发送失败] 手机号 {phone}，平台响应：{response_text[:300]}", flush=True)
+                return False, f"短信发送失败：{provider_message}"
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")
         print(f"[短信发送失败] HTTP {error.code}: {detail}", flush=True)
