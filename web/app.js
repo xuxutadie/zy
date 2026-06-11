@@ -23,6 +23,80 @@ const pageIds = [
   "data",
 ];
 const AUTH_TOKEN_KEY = "gyzk_auth_token";
+const schoolStageRoutes = {
+  小学: "primary-schools",
+  初中: "junior-schools",
+  高中: "high-schools",
+};
+const featuredSchoolDistricts = ["云岩区", "南明区", "观山湖区"];
+const featuredSchoolNames = {
+  云岩区: {
+    小学: ["贵阳市省府路小学", "贵阳市实验小学", "贵阳市环西小学", "贵阳市第二实验小学", "贵阳中天北京小学"],
+    初中: ["贵阳市第十七中学", "贵阳市第十九中学", "贵州师范大学云岩实验中学", "贵阳市云岩区中天中学", "贵阳市第二实验中学"],
+  },
+  南明区: {
+    小学: [
+      "贵阳市南明区南明小学",
+      "贵阳市南明区甲秀小学",
+      "贵阳市南明区尚义路小学",
+      { name: "贵阳市南明区华麟学校", displayName: "贵阳市南明区华麟学校（小学部）" },
+      { name: "贵阳市南明区苗苗实验学校", displayName: "贵阳市南明区苗苗实验学校（小学部）" },
+    ],
+    初中: [
+      "贵阳市第十八中学",
+      "贵阳市南明区华麟学校",
+      "贵阳市南明区李端棻中学",
+      { name: "贵阳市南明甲秀高级中学", displayName: "贵阳市南明甲秀高级中学（初中部）" },
+      { name: "贵州省实验中学", displayName: "贵州省实验中学（初中部）" },
+    ],
+  },
+  观山湖区: {
+    小学: [
+      "北京师范大学贵阳附属小学",
+      { name: "华东师范大学附属贵阳学校", displayName: "华东师范大学附属贵阳学校（小学部）" },
+      "贵阳市观山湖区外国语实验小学",
+      "观山湖区华润小学",
+      "贵阳市第一实验小学",
+    ],
+    初中: [
+      { name: "北京师范大学贵阳附属中学", displayName: "北京师范大学贵阳附属中学（初中部）" },
+      "华东师范大学附属贵阳学校",
+      "贵阳市第三中学",
+      "观山湖区华润中学",
+      "贵阳市观山湖区外国语实验中学",
+    ],
+  },
+};
+const verifiedSchoolImages = {
+  贵阳市第一中学: {
+    url: "https://assets.moretouch.com.cn/1/upload/content/2024/04/6614a47aaf571.jpg",
+    source: "学校官网公开图片",
+  },
+  贵州师范大学附属中学: {
+    url: "https://jcjyyjy.gznu.edu.cn/__local/F/8D/67/016DB77B13A257BE3525D113229_06A32BC7_3CA85.jpg?e=.jpg",
+    source: "学校公开页面",
+  },
+  贵阳市第十九中学: {
+    url: "https://img.phb123.com/uploads/230114/809-2301141I11HL.png",
+    source: "公开学校图文页面",
+  },
+  贵阳市第二实验中学: {
+    url: "https://img.phb123.com/uploads/230114/809-2301141H5223Q.png",
+    source: "公开学校图文页面",
+  },
+  贵阳中天中学: {
+    url: "https://img.phb123.com/uploads/230114/809-2301141I91EC.png",
+    source: "公开学校图文页面",
+  },
+  贵阳市第三实验中学: {
+    url: "https://img.phb123.com/uploads/allimg/221024/812-2210242102200-L.jpg",
+    source: "公开学校图文页面",
+  },
+  贵阳市第十八中学: {
+    url: "https://img.phb123.com/uploads/230114/809-2301141HKT04.png",
+    source: "公开学校图文页面",
+  },
+};
 
 function isAdmin() {
   return Boolean(state.user?.isAdmin || state.user?.role === "admin");
@@ -85,30 +159,34 @@ function setupAuthUi() {
     "beforeend",
     `
       <section class="auth-gate" id="authGate" aria-live="polite">
+        <video class="auth-video-bg" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+          <source src="./assets/auth-fpv-bg.mp4" type="video/mp4" />
+        </video>
+        <div class="auth-video-overlay" aria-hidden="true"></div>
         <div class="auth-shell">
           <aside class="auth-intro" aria-label="系统入口">
             <div>
-              <img class="auth-logo" src="./assets/youxueku-logo.png" alt="优学库" />
               <p class="eyebrow">Data Driven Advisory</p>
-              <h1 class="auth-title">贵阳<span>新</span>中考<br />志愿填报模拟器</h1>
-              <p class="auth-slogan">基于贵阳中考公开资料结构化整理，结合录取线、招生计划、位次分布和历史参考，为家长提供可解释的填报测算。</p>
+              <h1 class="auth-title">贵阳新中考志愿<span>填报模拟器</span></h1>
+              <p class="auth-slogan">基于贵阳中考公开资料结构化整理，连接学校信息、录取线、招生计划、位次分布和历史参考，为家长提供可解释的升学判断。</p>
+            </div>
+            <div class="auth-heat-strip" aria-label="平台热度">
+              <span>2026 数据已接入</span>
+              <span>家长高频测算</span>
+              <span>志愿方案热度上升</span>
             </div>
             <div class="auth-data-proof">
-              <div><strong>169条</strong><span>2025官方录取线，覆盖约110所学校及统招、配额、项目班等类型</span></div>
-              <div><strong>7010行</strong><span>位次换算数据，含全市701行与区域6309行分数段明细</span></div>
+              <div><strong>117条</strong><span>2026普通高中及综合高中招生计划，覆盖公办、民办和中外合作项目班</span></div>
+              <div><strong>47929人</strong><span>2026已明确计划名额，另有1所学校官方表中显示待定</span></div>
               <div><strong>597条</strong><span>2023-2024历史录取线，用于往年对比和学校热度参考</span></div>
-              <div><strong>8121条/行</strong><span>综合结构化数据，含计划、控制线、规则、地址和来源索引</span></div>
-            </div>
-            <div class="auth-status">
-              <span>另含招生计划明细179条、控制线36条、非计分规则7条、学校地址95条</span>
-              <span>20项公开来源已纳入索引；概率为规则估算，不作录取承诺</span>
+              <div><strong>8238条/行</strong><span>综合结构化数据，含计划、控制线、规则、地址和来源索引</span></div>
             </div>
           </aside>
           <div class="auth-card">
             <div class="auth-brand">
               <div>
                 <p class="eyebrow">Account Access</p>
-                <h2>登录后进入操作台</h2>
+                <h2>登录贵阳教育导航</h2>
               </div>
             </div>
           <div class="auth-tabs" role="tablist" aria-label="账号操作">
@@ -144,7 +222,7 @@ function setupAuthUi() {
             </label>
             <button type="submit">完成注册</button>
           </form>
-          <p class="auth-message" id="authMessage">本地测试版：验证码会显示在页面提示中，正式上线再接入短信服务商。</p>
+          <p class="auth-message" id="authMessage"></p>
           </div>
         </div>
       </section>
@@ -280,14 +358,32 @@ function setupAccountPanel() {
   document.querySelector(".sidebar").insertAdjacentHTML(
     "beforeend",
     `
-      <div class="account-panel" id="accountPanel" hidden>
-        <strong data-account-role></strong>
-        <span data-account-phone></span>
-        <a href="/admin" data-admin-link hidden>后台</a>
-        <button type="button" id="logoutButton">退出</button>
+      <div class="account-panel" id="accountPanel" data-expanded="false" hidden>
+        <button class="account-trigger" type="button" id="accountPanelToggle" aria-expanded="false">
+          <span data-account-role></span>
+          <strong data-account-phone></strong>
+        </button>
+        <div class="account-actions">
+          <a href="/admin" data-admin-link hidden>后台</a>
+          <button type="button" id="logoutButton">退出</button>
+        </div>
       </div>
     `,
   );
+  document.querySelector("#accountPanelToggle").addEventListener("click", () => {
+    const panel = document.querySelector("#accountPanel");
+    const trigger = document.querySelector("#accountPanelToggle");
+    if (!panel || !trigger) return;
+    if (document.body.classList.contains("sidebar-collapsed")) {
+      document.body.classList.remove("sidebar-collapsed");
+      localStorage.setItem("gyedu.sidebarCollapsed", "false");
+      document.querySelector("#sidebarCollapseControl")?.setAttribute("aria-expanded", "true");
+      document.querySelector("#sidebarCollapseControl")?.setAttribute("aria-label", "折叠侧边栏");
+    }
+    const nextExpanded = panel.dataset.expanded !== "true";
+    panel.dataset.expanded = nextExpanded ? "true" : "false";
+    trigger.setAttribute("aria-expanded", String(nextExpanded));
+  });
   document.querySelector("#logoutButton").addEventListener("click", logout);
 }
 
@@ -328,10 +424,9 @@ function setActivePage(page, options = {}) {
     group.classList.toggle("active-group", hasActiveChild);
     if (hasActiveChild) {
       group.dataset.collapsed = "false";
-      const toggle = group.querySelector(".nav-toggle");
-      if (toggle) {
-        toggle.setAttribute("aria-expanded", "true");
-        toggle.setAttribute("aria-label", `折叠${group.querySelector(".nav-primary")?.textContent || "当前"}子项目`);
+      const primary = group.querySelector(".nav-primary");
+      if (primary) {
+        primary.setAttribute("aria-expanded", "true");
       }
     }
   });
@@ -347,21 +442,34 @@ function setActivePage(page, options = {}) {
 }
 
 function initNavigation() {
+  const collapseControl = document.querySelector("#sidebarCollapseControl");
+  const storedSidebarState = localStorage.getItem("gyedu.sidebarCollapsed");
+  const setSidebarCollapsed = (collapsed) => {
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+    if (collapseControl) {
+      collapseControl.setAttribute("aria-expanded", String(!collapsed));
+      collapseControl.setAttribute("aria-label", collapsed ? "展开侧边栏" : "折叠侧边栏");
+    }
+    localStorage.setItem("gyedu.sidebarCollapsed", collapsed ? "true" : "false");
+  };
+  setSidebarCollapsed(storedSidebarState === "true");
+  collapseControl?.addEventListener("click", () => {
+    setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+  });
+
   document.querySelectorAll(".nav a[data-page]").forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
+      const group = link.closest(".nav-group");
+      const nextGroupCollapsed = group && link.classList.contains("nav-primary") ? group.dataset.collapsed !== "true" : null;
       setActivePage(link.dataset.page);
-    });
-  });
-  document.querySelectorAll(".nav-toggle").forEach((button) => {
-    button.addEventListener("click", () => {
-      const group = button.closest(".nav-group");
-      if (!group) return;
-      const shouldCollapse = group.dataset.collapsed !== "true";
-      group.dataset.collapsed = shouldCollapse ? "true" : "false";
-      button.setAttribute("aria-expanded", String(!shouldCollapse));
-      const labelPrefix = shouldCollapse ? "展开" : "折叠";
-      button.setAttribute("aria-label", `${labelPrefix}${group.querySelector(".nav-primary")?.textContent || "当前"}子项目`);
+      if (group && link.classList.contains("nav-primary")) {
+        group.dataset.collapsed = nextGroupCollapsed ? "true" : "false";
+        link.setAttribute("aria-expanded", String(!nextGroupCollapsed));
+      }
+      if (document.body.classList.contains("sidebar-collapsed")) {
+        setSidebarCollapsed(false);
+      }
     });
   });
   window.addEventListener("popstate", () => {
@@ -691,6 +799,12 @@ function quotaMockClass(chance) {
   return "risk";
 }
 
+function formatPlanReference(school) {
+  if (!school.planTotal) return "计划待复核";
+  const year = school.planReferenceYear || 2025;
+  return `${year}计划约 ${school.planTotal} 人`;
+}
+
 function buildReason(school, form, chance) {
   const delta = Math.round(form.score - school.score);
   const lineRank = getDistributionRank(school.score);
@@ -699,7 +813,7 @@ function buildReason(school, form, chance) {
   const rankText = lineRank
     ? `2025线约对应全市累计位次 ${lineRank}${regionLineRank ? `、${form.region}累计位次 ${regionLineRank}` : ""}，本项按${rankMode}评估`
     : "暂无可用位次换算";
-  const planText = school.planTotal ? `计划约 ${school.planTotal} 人` : "计划待复核";
+  const planText = formatPlanReference(school);
   const historyText = school.history.length ? `已匹配 ${school.history.length} 条历史线` : "历史线匹配较少";
   const quotaText = school.type.includes("配额")
     ? `配额资格排位 ${form.quotaRank || "未填"}，需结合本校分配名额判断`
@@ -864,12 +978,15 @@ function renderEmptyResults() {
 function renderMetrics() {
   const admissionCount = state.data.schools.length;
   const schoolCount = new Set(state.data.schools.map((school) => school.school)).size;
-  const planCount = state.data.schools.filter((school) => school.planTotal > 0).length;
+  const plan2026Rows = state.data.admissionPlan2026?.length || 0;
+  const plan2026Total = (state.data.admissionPlan2026 || []).reduce((sum, row) => sum + (Number(row["招生人数"]) || Number(row.count) || 0), 0);
+  const planCount = state.data.schools.filter((school) => school.planReferenceYear === 2026 && school.planTotal > 0).length;
   const scoreRows = state.data.scoreDistribution.length;
   const historyCount = state.data.schools.reduce((sum, school) => sum + school.history.length, 0);
   const metrics = [
-    ["2025年录取信息", admissionCount, `已结构化约 ${schoolCount} 所学校的录取结果，含统招、配额、项目班等类型`],
-    ["2025招生计划关联", planCount, "这些录取记录已能参考对应学校的招生计划"],
+    ["2026招生计划", plan2026Rows, `已接入明确名额 ${plan2026Total.toLocaleString()} 人，另含1条待定记录`],
+    ["2026计划已关联", planCount, `已匹配到 ${planCount} 条2025录取线记录，作为今年计划参考`],
+    ["2025年录取信息", admissionCount, `已结构化约 ${schoolCount} 所学校录取结果，仍作为录取线模拟参考`],
     ["2025位次换算行数", scoreRows, "来自全市一分一段表，用于分数与位次换算"],
     ["2023-2024历史参考", historyCount, "已匹配到当前录取线数据的往年记录"],
   ];
@@ -908,6 +1025,133 @@ function getSchoolInfoByStage(stage) {
   return (state.schoolInfo?.schools || []).filter((school) => school.stage === stage);
 }
 
+function getSchoolDistrictLabel(district) {
+  return String(district || "").replace(/^贵阳市-/, "");
+}
+
+function findSchoolDistrictValue(items, districtLabel) {
+  return items.find((school) => getSchoolDistrictLabel(school.district) === districtLabel)?.district || districtLabel;
+}
+
+function getSchoolImageInfo(school) {
+  const imageName = school.displayName || school.name;
+  const verified = verifiedSchoolImages[school.name] || verifiedSchoolImages[imageName];
+  if (verified) {
+    return {
+      ...verified,
+      sourceUrl: verified.url,
+    };
+  }
+  const query = `${imageName} ${getSchoolDistrictLabel(school.district)} 校园`;
+  return {
+    url: `https://tse1-mm.cn.bing.net/th?q=${encodeURIComponent(query)}&w=720&h=420&c=7&rs=1&p=0&o=5&pid=1.7`,
+    source: "图片检索",
+    sourceUrl: `https://cn.bing.com/images/search?q=${encodeURIComponent(query)}`,
+  };
+}
+
+function renderSchoolQuickAccess(stage, items, filter) {
+  return `
+    <section class="school-quick-panel" aria-label="学校信息快捷入口">
+      <div class="school-quick-head">
+        <strong>快捷入口</strong>
+        <span>按区域和学段快速查看学校信息</span>
+      </div>
+      <div class="school-quick-grid">
+        ${featuredSchoolDistricts
+          .map((district) => {
+            const districtValue = findSchoolDistrictValue(items, district);
+            const active = getSchoolDistrictLabel(filter.district) === district;
+            return `
+              <button class="school-quick-card ${active ? "active" : ""}" type="button" data-district="${escapeHtml(districtValue)}">
+                <span>区域</span>
+                <strong>${district}</strong>
+              </button>
+            `;
+          })
+          .join("")}
+        ${Object.keys(schoolStageRoutes)
+          .map(
+            (stageName) => `
+              <button class="school-quick-card ${stageName === stage ? "active" : ""}" type="button" data-school-page="${schoolStageRoutes[stageName]}">
+                <span>学段</span>
+                <strong>${stageName}</strong>
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderFeaturedSchools(stage, items) {
+  if (stage === "高中") {
+    return "";
+  }
+  return `
+    <section class="featured-school-panel" aria-label="${stage}热门学校">
+      <div class="featured-school-title">
+        <div>
+          <p class="eyebrow">Popular Schools</p>
+          <h3>热门学校</h3>
+        </div>
+        <span>云岩、南明、观山湖区各展示 5 所${stage}，图片按学校名称公开检索接入。</span>
+      </div>
+      ${featuredSchoolDistricts
+        .map((district) => {
+          const schoolNames = featuredSchoolNames[district]?.[stage] || [];
+          const schools = schoolNames
+            .map((entry) => {
+              const config = typeof entry === "string" ? { name: entry } : entry;
+              const school =
+                items.find((item) => item.name === config.name) ||
+                (state.schoolInfo?.schools || []).find((item) => item.name === config.name);
+              if (!school) return null;
+              return { ...school, displayName: config.displayName || school.name, displayStage: stage };
+            })
+            .filter(Boolean);
+          if (!schools.length) return "";
+          return `
+            <div class="featured-district-block">
+              <div class="featured-district-head">
+                <strong>${district} · ${stage}</strong>
+                <button type="button" data-district="${escapeHtml(findSchoolDistrictValue(items, district))}">查看本区全部</button>
+              </div>
+              <div class="featured-school-grid">
+                ${schools
+                  .map((school) => {
+                    const image = getSchoolImageInfo(school);
+                    return `
+                      <article class="featured-school-card">
+                        <div class="featured-school-image">
+                          <img src="${escapeHtml(image.url)}" alt="${escapeHtml(school.displayName)}校园图片" loading="lazy" />
+                          <div class="featured-badges">
+                            <span>${escapeHtml(getSchoolDistrictLabel(school.district))}</span>
+                            <span>${escapeHtml(school.displayStage)}</span>
+                          </div>
+                        </div>
+                        <div class="featured-school-body">
+                          <h4>${escapeHtml(school.displayName)}</h4>
+                          <p>${escapeHtml(formatSchoolAddress(school.address))}</p>
+                          <div class="featured-school-meta">
+                            <span>${escapeHtml(school.nature || "性质待补充")}</span>
+                            <a href="${escapeHtml(image.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(image.source)}</a>
+                          </div>
+                        </div>
+                      </article>
+                    `;
+                  })
+                  .join("")}
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    </section>
+  `;
+}
+
 function getSchoolDirectoryFilter(stage) {
   if (!state.schoolInfoFilters[stage]) {
     state.schoolInfoFilters[stage] = { keyword: "", district: "" };
@@ -940,6 +1184,8 @@ function renderSchoolDirectory(container, stage) {
   const supplementCount = items.filter((school) => school.status.includes("补充") || school.status.includes("映射")).length;
 
   container.innerHTML = `
+    ${renderSchoolQuickAccess(stage, items, filter)}
+    ${renderFeaturedSchools(stage, items)}
     <div class="directory-summary">
       <div>
         <strong>${items.length.toLocaleString()} 所</strong>
@@ -1009,6 +1255,21 @@ function renderSchoolDirectory(container, stage) {
   container.querySelector(".directory-district").addEventListener("change", (event) => {
     getSchoolDirectoryFilter(stage).district = event.target.value;
     renderSchoolDirectory(container, stage);
+  });
+  container.querySelectorAll("[data-district]").forEach((button) => {
+    button.addEventListener("click", () => {
+      getSchoolDirectoryFilter(stage).district = button.dataset.district;
+      renderSchoolDirectory(container, stage);
+    });
+  });
+  container.querySelectorAll("[data-school-page]").forEach((button) => {
+    button.addEventListener("click", () => setActivePage(button.dataset.schoolPage));
+  });
+  container.querySelectorAll(".featured-school-image img").forEach((image) => {
+    image.addEventListener("error", () => {
+      image.closest(".featured-school-card")?.classList.add("image-error");
+      image.remove();
+    });
   });
 }
 
@@ -1200,7 +1461,7 @@ function renderQuotaSimulation(form) {
                   <span>2025线 ${school.score}</span>
                   <span>统招参考 ${formatPercent(school.unifiedChance)}</span>
                   <span>有效排位约 ${school.effectiveQuotaRank}</span>
-                  <span>${school.planTotal ? `学校计划约 ${school.planTotal} 人` : "计划未匹配"}</span>
+                  <span>${formatPlanReference(school)}</span>
                   <span>本校配额名额待导入</span>
                 </div>
                 <p class="quota-stage">${school.stageText}：${school.detailText}</p>
@@ -1230,7 +1491,7 @@ function renderSchoolTable(filter = "") {
           <td>${school.batch}</td>
           <td>${school.type}</td>
           <td>${school.score}</td>
-          <td>${school.planTotal || "计划未匹配"}</td>
+          <td>${school.planTotal ? `${school.planReferenceYear || 2025}年 ${school.planTotal}` : "计划未匹配"}</td>
           <td>${school.nature}</td>
           <td>${school.address || school.addressStatus || "地址待补充"}</td>
         </tr>
@@ -1331,7 +1592,7 @@ async function startApp() {
   state.data = await response.json();
   const schoolInfoResponse = await fetch(`./data/school-info-2026.json?v=${Date.now()}`, { cache: "no-store" });
   state.schoolInfo = await schoolInfoResponse.json();
-  document.querySelector("#dataStatus").textContent = "2025/2026 数据已加载";
+  document.querySelector("#dataStatus").textContent = "2026计划与2025参考数据已加载";
   renderMetrics();
   renderSourceOverview();
   renderDataSources();

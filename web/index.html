@@ -3,56 +3,57 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#17152e" />
-    <title>贵阳中考志愿填报操作台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260608-school-info-directory" />
+    <meta name="theme-color" content="#17172f" />
+    <title>贵阳教育导航</title>
+    <link rel="stylesheet" href="./styles.css?v=20260611-calc-disclaimer-offset" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">跳到主要内容</a>
     <div class="app-shell">
       <aside class="sidebar">
-        <div class="brand">
-          <img class="brand-logo" src="./assets/youxueku-logo.png" alt="优学库" />
+        <button class="brand" type="button" id="sidebarCollapseControl" aria-expanded="true" aria-label="折叠侧边栏">
           <div>
-            <strong>贵阳中考志愿</strong>
-            <span>填报操作台</span>
+            <strong>贵阳教育导航</strong>
+            <span>升学规划数据平台</span>
           </div>
-        </div>
+        </button>
         <nav class="nav">
           <div class="nav-group">
             <div class="nav-group-head">
-              <a class="nav-primary active" href="?page=calculator" data-page="calculator" aria-current="page">中考志愿模拟</a>
-              <button class="nav-toggle" type="button" aria-expanded="true" aria-label="折叠中考志愿模拟子项目"></button>
+              <a class="nav-primary active" href="?page=calculator" data-page="calculator" data-short="志愿" aria-expanded="true" aria-current="page">中考志愿模拟</a>
             </div>
             <div class="subnav" id="examSubnav" aria-label="中考志愿模拟子项目">
-              <a href="?page=dashboard" data-page="dashboard">数据依据</a>
-              <a href="?page=schools" data-page="schools">2025年高中录取线</a>
-              <a href="?page=data" data-page="data">数据管理</a>
+              <a href="?page=dashboard" data-page="dashboard" data-short="依据">数据依据</a>
+              <a href="?page=schools" data-page="schools" data-short="录取">2025年高中录取线</a>
+              <a href="?page=data" data-page="data" data-short="数据">数据管理</a>
             </div>
           </div>
           <div class="nav-group" data-collapsed="true">
             <div class="nav-group-head">
-              <a class="nav-primary" href="?page=high-schools" data-page="high-schools">学校信息查询</a>
-              <button class="nav-toggle" type="button" aria-expanded="false" aria-label="展开学校信息查询子项目"></button>
+              <a class="nav-primary" href="?page=high-schools" data-page="high-schools" data-short="学校" aria-expanded="false">学校信息查询</a>
             </div>
             <div class="subnav" id="schoolInfoSubnav" aria-label="学校信息查询子项目">
-              <a href="?page=primary-schools" data-page="primary-schools">小学</a>
-              <a href="?page=junior-schools" data-page="junior-schools">初中</a>
-              <a href="?page=high-schools" data-page="high-schools">高中</a>
+              <a href="?page=primary-schools" data-page="primary-schools" data-short="小学">小学</a>
+              <a href="?page=junior-schools" data-page="junior-schools" data-short="初中">初中</a>
+              <a href="?page=high-schools" data-page="high-schools" data-short="高中">高中</a>
             </div>
           </div>
-          <a class="nav-primary" href="?page=education-news" data-page="education-news">教育资讯分享</a>
-          <a class="nav-primary" href="?page=training-recommendations" data-page="training-recommendations">培训机构推荐</a>
-          <a class="nav-primary" href="?page=competition-insights" data-page="competition-insights">赛事信息解读</a>
+          <a class="nav-primary" href="?page=education-news" data-page="education-news" data-short="资讯">教育资讯分享</a>
+          <a class="nav-primary" href="?page=training-recommendations" data-page="training-recommendations" data-short="机构">培训机构推荐</a>
+          <a class="nav-primary" href="?page=competition-insights" data-page="competition-insights" data-short="赛事">赛事信息解读</a>
         </nav>
       </aside>
 
       <main class="workspace" id="mainContent">
         <header class="topbar">
           <div>
-            <p class="eyebrow">2025 模拟测试版</p>
-            <h1>贵阳中考志愿填报一体化操作台</h1>
-            <p class="topbar-copy">以分数、位次、统招路径和配额路径为主线，先完成家长测算，再查看数据依据。</p>
+            <h1>贵阳教育导航</h1>
+            <p class="topbar-copy">整合中考志愿模拟、学校信息查询、录取数据参考和教育内容服务，帮助家长更清晰地做升学判断。</p>
+            <div class="hero-data-strip" aria-label="平台数据概览">
+              <span><strong>117</strong> 条2026招生计划</span>
+              <span><strong>47929</strong> 个明确计划名额</span>
+              <span><strong>7010</strong> 行位次数据</span>
+            </div>
           </div>
           <div class="status-pill" id="dataStatus" aria-live="polite">数据加载中</div>
         </header>
@@ -61,9 +62,10 @@
           <form class="panel input-panel" id="calcForm">
             <div class="panel-title">
               <div>
-                <p class="eyebrow">Parent Test</p>
-                <h2>家长测算输入</h2>
+                <p class="eyebrow">Simulation Area</p>
+                <h2>模拟测算区域</h2>
               </div>
+              <span class="panel-disclaimer">测算结果仅为参考，不承担任何责任。</span>
             </div>
             <div class="calc-form-grid">
               <div class="field-group primary-group">
@@ -273,7 +275,7 @@
                   <th>批次</th>
                   <th>招生类型</th>
                   <th>2025线</th>
-                  <th>计划</th>
+                  <th>2026计划</th>
                   <th>性质</th>
                   <th>地址</th>
                 </tr>
@@ -358,11 +360,11 @@
             <div class="panel-title">
               <div>
                 <p class="eyebrow">Import Slots</p>
-                <h2>2026 待导入</h2>
+                <h2>2026 已接入 / 待补充</h2>
               </div>
             </div>
             <div class="import-slots">
-              <div><strong>招生计划明细</strong><span>统招、配额、定向、特长、项目班</span></div>
+              <div><strong>招生计划明细</strong><span>普通高中、综合高中、公办、民办、中外合作项目班已接入</span></div>
               <div><strong>初中配额分配表</strong><span>按毕业初中和高中匹配名额</span></div>
               <div><strong>分数段统计</strong><span>成绩公布后换算位次</span></div>
             </div>
@@ -377,12 +379,12 @@
             <div class="review-list">
               <div><strong>2023-2025 录取线</strong><span>官方图片 OCR，重点复核学校名称</span></div>
               <div><strong>2024 分数段</strong><span>OCR 原始结果已保留，暂不作为核心算法</span></div>
-              <div><strong>2025 招生计划</strong><span>总数已对齐，明细可继续抽样</span></div>
+              <div><strong>2026 招生计划</strong><span>已按官方图片结构化117条，含1条待定</span></div>
             </div>
           </div>
         </section>
       </main>
     </div>
-    <script src="./app.js?v=20260608-school-info-directory"></script>
+    <script src="./app.js?v=20260611-calc-disclaimer-offset"></script>
   </body>
 </html>
