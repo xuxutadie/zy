@@ -1,5 +1,7 @@
 const state = {
   data: null,
+  schoolInfo: null,
+  schoolInfoFilters: {},
   currentBand: "稳一稳",
   results: [],
   hasCalculated: false,
@@ -8,7 +10,18 @@ const state = {
 };
 
 const bandOrder = ["冲一冲", "稳一稳", "保一保", "谨慎填报"];
-const pageIds = ["calculator", "dashboard", "schools", "data"];
+const pageIds = [
+  "calculator",
+  "dashboard",
+  "schools",
+  "primary-schools",
+  "junior-schools",
+  "high-schools",
+  "education-news",
+  "training-recommendations",
+  "competition-insights",
+  "data",
+];
 const AUTH_TOKEN_KEY = "gyzk_auth_token";
 
 function isAdmin() {
@@ -16,7 +29,19 @@ function isAdmin() {
 }
 
 function getAllowedPageIds() {
-  return isAdmin() ? pageIds : ["calculator", "dashboard", "schools"];
+  return isAdmin()
+    ? pageIds
+    : [
+        "calculator",
+        "dashboard",
+        "schools",
+        "primary-schools",
+        "junior-schools",
+        "high-schools",
+        "education-news",
+        "training-recommendations",
+        "competition-insights",
+      ];
 }
 
 function getAuthToken() {
@@ -298,6 +323,18 @@ function setActivePage(page, options = {}) {
       link.removeAttribute("aria-current");
     }
   });
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    const hasActiveChild = Boolean(group.querySelector(`a[data-page="${activePage}"]`));
+    group.classList.toggle("active-group", hasActiveChild);
+    if (hasActiveChild) {
+      group.dataset.collapsed = "false";
+      const toggle = group.querySelector(".nav-toggle");
+      if (toggle) {
+        toggle.setAttribute("aria-expanded", "true");
+        toggle.setAttribute("aria-label", `折叠${group.querySelector(".nav-primary")?.textContent || "当前"}子项目`);
+      }
+    }
+  });
 
   if (!options.skipHistory) {
     const nextUrl = new URL(window.location.href);
@@ -314,6 +351,17 @@ function initNavigation() {
     link.addEventListener("click", (event) => {
       event.preventDefault();
       setActivePage(link.dataset.page);
+    });
+  });
+  document.querySelectorAll(".nav-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const group = button.closest(".nav-group");
+      if (!group) return;
+      const shouldCollapse = group.dataset.collapsed !== "true";
+      group.dataset.collapsed = shouldCollapse ? "true" : "false";
+      button.setAttribute("aria-expanded", String(!shouldCollapse));
+      const labelPrefix = shouldCollapse ? "展开" : "折叠";
+      button.setAttribute("aria-label", `${labelPrefix}${group.querySelector(".nav-primary")?.textContent || "当前"}子项目`);
     });
   });
   window.addEventListener("popstate", () => {
@@ -823,7 +871,7 @@ function renderMetrics() {
     ["2025年录取信息", admissionCount, `已结构化约 ${schoolCount} 所学校的录取结果，含统招、配额、项目班等类型`],
     ["2025招生计划关联", planCount, "这些录取记录已能参考对应学校的招生计划"],
     ["2025位次换算行数", scoreRows, "来自全市一分一段表，用于分数与位次换算"],
-    ["2023-2024历史参考", historyCount, "已匹配到学校库的往年录取线记录"],
+    ["2023-2024历史参考", historyCount, "已匹配到当前录取线数据的往年记录"],
   ];
   document.querySelector("#metrics").innerHTML = metrics
     .map(
@@ -840,6 +888,128 @@ function renderMetrics() {
 
 function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatSchoolAddress(address) {
+  const value = String(address || "").trim();
+  return value && value !== "（待补充）" ? value : "地址待补充";
+}
+
+function getSchoolInfoByStage(stage) {
+  return (state.schoolInfo?.schools || []).filter((school) => school.stage === stage);
+}
+
+function getSchoolDirectoryFilter(stage) {
+  if (!state.schoolInfoFilters[stage]) {
+    state.schoolInfoFilters[stage] = { keyword: "", district: "" };
+  }
+  return state.schoolInfoFilters[stage];
+}
+
+function renderSchoolDirectories() {
+  document.querySelectorAll(".school-directory").forEach((container) => {
+    const stage = container.dataset.stage;
+    renderSchoolDirectory(container, stage);
+  });
+}
+
+function renderSchoolDirectory(container, stage) {
+  const items = getSchoolInfoByStage(stage);
+  const filter = getSchoolDirectoryFilter(stage);
+  const districts = uniqueValues(items.map((school) => school.district)).sort();
+  const keyword = filter.keyword.trim().toLowerCase();
+  const filtered = items
+    .filter((school) => {
+      const searchText = [school.name, school.schoolType, school.nature, school.district, school.address, ...(school.aliases || [])]
+        .join(" ")
+        .toLowerCase();
+      return !keyword || searchText.includes(keyword);
+    })
+    .filter((school) => !filter.district || school.district === filter.district)
+    .sort((a, b) => a.district.localeCompare(b.district, "zh-Hans-CN") || a.name.localeCompare(b.name, "zh-Hans-CN"));
+  const pendingCount = items.filter((school) => formatSchoolAddress(school.address) === "地址待补充").length;
+  const supplementCount = items.filter((school) => school.status.includes("补充") || school.status.includes("映射")).length;
+
+  container.innerHTML = `
+    <div class="directory-summary">
+      <div>
+        <strong>${items.length.toLocaleString()} 所</strong>
+        <span>${stage}基础信息</span>
+      </div>
+      <div>
+        <strong>${districts.length.toLocaleString()} 个</strong>
+        <span>覆盖区域</span>
+      </div>
+      <div>
+        <strong>${pendingCount.toLocaleString()} 条</strong>
+        <span>地址待补充</span>
+      </div>
+      <div>
+        <strong>${supplementCount.toLocaleString()} 条</strong>
+        <span>2026补充/映射</span>
+      </div>
+    </div>
+    <div class="directory-tools">
+      <input class="directory-search" type="search" value="${escapeHtml(filter.keyword)}" placeholder="搜索学校名称、地址、区域..." data-stage="${stage}" />
+      <select class="directory-district" data-stage="${stage}">
+        <option value="">全部区域</option>
+        ${districts.map((district) => `<option value="${escapeHtml(district)}" ${district === filter.district ? "selected" : ""}>${escapeHtml(district)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="directory-table-wrap">
+      <table class="data-table directory-table">
+        <thead>
+          <tr>
+            <th>学校名称</th>
+            <th>办学类型</th>
+            <th>性质</th>
+            <th>区域</th>
+            <th>地址</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered
+            .slice(0, 180)
+            .map(
+              (school) => `
+                <tr>
+                  <td>
+                    <strong>${escapeHtml(school.name)}</strong>
+                    ${(school.aliases || []).length ? `<span class="alias-text">别名：${escapeHtml(school.aliases.join("、"))}</span>` : ""}
+                  </td>
+                  <td>${escapeHtml(school.schoolType || "待补充")}</td>
+                  <td>${escapeHtml(school.nature || "待补充")}</td>
+                  <td>${escapeHtml(school.district || "待补充")}</td>
+                  <td>${escapeHtml(formatSchoolAddress(school.address))}</td>
+                  <td><span class="directory-status-pill">${escapeHtml(school.status)}</span></td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+    <p class="directory-note">当前显示 ${Math.min(filtered.length, 180).toLocaleString()} / ${filtered.length.toLocaleString()} 条匹配结果；数据源：${escapeHtml(state.schoolInfo?.meta?.sourceFile || "学校基础信息表")}。</p>
+  `;
+
+  container.querySelector(".directory-search").addEventListener("input", (event) => {
+    getSchoolDirectoryFilter(stage).keyword = event.target.value;
+    renderSchoolDirectory(container, stage);
+  });
+  container.querySelector(".directory-district").addEventListener("change", (event) => {
+    getSchoolDirectoryFilter(stage).district = event.target.value;
+    renderSchoolDirectory(container, stage);
+  });
 }
 
 function renderSourceOverview() {
@@ -1159,11 +1329,14 @@ async function startApp() {
   initNavigation();
   const response = await fetch(`./data/2025-simulation.json?v=${Date.now()}`, { cache: "no-store" });
   state.data = await response.json();
-  document.querySelector("#dataStatus").textContent = "2025 数据已加载";
+  const schoolInfoResponse = await fetch(`./data/school-info-2026.json?v=${Date.now()}`, { cache: "no-store" });
+  state.schoolInfo = await schoolInfoResponse.json();
+  document.querySelector("#dataStatus").textContent = "2025/2026 数据已加载";
   renderMetrics();
   renderSourceOverview();
   renderDataSources();
   renderSchoolTable();
+  renderSchoolDirectories();
   updateAutoRankInputs();
   updateQuotaRankHint();
   renderEmptyResults();

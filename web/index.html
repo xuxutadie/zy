@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17152e" />
     <title>贵阳中考志愿填报操作台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260606-auth-title-red-new" />
+    <link rel="stylesheet" href="./styles.css?v=20260608-school-info-directory" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">跳到主要内容</a>
@@ -19,10 +19,31 @@
           </div>
         </div>
         <nav class="nav">
-          <a href="?page=calculator" class="active" data-page="calculator" aria-current="page">家长测算</a>
-          <a href="?page=dashboard" data-page="dashboard">数据依据</a>
-          <a href="?page=schools" data-page="schools">学校库</a>
-          <a href="?page=data" data-page="data">数据管理</a>
+          <div class="nav-group">
+            <div class="nav-group-head">
+              <a class="nav-primary active" href="?page=calculator" data-page="calculator" aria-current="page">中考志愿模拟</a>
+              <button class="nav-toggle" type="button" aria-expanded="true" aria-label="折叠中考志愿模拟子项目"></button>
+            </div>
+            <div class="subnav" id="examSubnav" aria-label="中考志愿模拟子项目">
+              <a href="?page=dashboard" data-page="dashboard">数据依据</a>
+              <a href="?page=schools" data-page="schools">2025年高中录取线</a>
+              <a href="?page=data" data-page="data">数据管理</a>
+            </div>
+          </div>
+          <div class="nav-group" data-collapsed="true">
+            <div class="nav-group-head">
+              <a class="nav-primary" href="?page=high-schools" data-page="high-schools">学校信息查询</a>
+              <button class="nav-toggle" type="button" aria-expanded="false" aria-label="展开学校信息查询子项目"></button>
+            </div>
+            <div class="subnav" id="schoolInfoSubnav" aria-label="学校信息查询子项目">
+              <a href="?page=primary-schools" data-page="primary-schools">小学</a>
+              <a href="?page=junior-schools" data-page="junior-schools">初中</a>
+              <a href="?page=high-schools" data-page="high-schools">高中</a>
+            </div>
+          </div>
+          <a class="nav-primary" href="?page=education-news" data-page="education-news">教育资讯分享</a>
+          <a class="nav-primary" href="?page=training-recommendations" data-page="training-recommendations">培训机构推荐</a>
+          <a class="nav-primary" href="?page=competition-insights" data-page="competition-insights">赛事信息解读</a>
         </nav>
       </aside>
 
@@ -239,10 +260,10 @@
         <section id="schools" class="section panel" data-route hidden>
           <div class="panel-title">
             <div>
-              <p class="eyebrow">School Library</p>
-              <h2>学校库</h2>
+              <p class="eyebrow">2025 Admission Lines</p>
+              <h2>2025年高中录取线</h2>
             </div>
-            <input class="search" id="schoolSearch" name="schoolSearch" type="search" placeholder="搜索学校或招生类型…" autocomplete="off" />
+            <input class="search" id="schoolSearch" name="schoolSearch" type="search" placeholder="搜索高中或招生类型…" autocomplete="off" />
           </div>
           <div class="table-wrap">
             <table>
@@ -259,6 +280,76 @@
               </thead>
               <tbody id="schoolTable"></tbody>
             </table>
+          </div>
+        </section>
+
+        <section id="primary-schools" class="section panel school-info-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Primary School Query</p>
+              <h2>小学信息查询</h2>
+            </div>
+          </div>
+          <div class="school-directory" data-stage="小学"></div>
+        </section>
+
+        <section id="junior-schools" class="section panel school-info-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Junior High Query</p>
+              <h2>初中信息查询</h2>
+            </div>
+          </div>
+          <div class="school-directory" data-stage="初中"></div>
+        </section>
+
+        <section id="high-schools" class="section panel school-info-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">High School Query</p>
+              <h2>高中信息查询</h2>
+            </div>
+          </div>
+          <div class="school-directory" data-stage="高中"></div>
+          <a class="inline-action" href="?page=schools">查看2025年高中录取线</a>
+        </section>
+
+        <section id="education-news" class="section panel content-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Education News</p>
+              <h2>教育资讯分享</h2>
+            </div>
+          </div>
+          <div class="empty-state">
+            <strong>教育资讯内容待补充</strong>
+            <span>后续可接入升学政策、教育动态、志愿填报提醒、考试节点和家长常见问题，形成资讯分享页面。</span>
+          </div>
+        </section>
+
+        <section id="training-recommendations" class="section panel content-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Training Recommendations</p>
+              <h2>培训机构推荐</h2>
+            </div>
+          </div>
+          <div class="empty-state">
+            <strong>培训机构推荐内容待补充</strong>
+            <span>后续可按学段、课程方向、区域、服务特色和适合人群整理机构信息，方便家长筛选。</span>
+          </div>
+        </section>
+
+        <section id="competition-insights" class="section panel content-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Competition Insights</p>
+              <h2>赛事信息解读</h2>
+            </div>
+          </div>
+          <div class="empty-state">
+            <strong>赛事信息内容待补充</strong>
+            <span>后续可整理白名单赛事、科技创新赛事、AI竞赛、报名节点、适合年级和备赛建议。</span>
           </div>
         </section>
 
@@ -292,6 +383,6 @@
         </section>
       </main>
     </div>
-    <script src="./app.js?v=20260606-admin-page"></script>
+    <script src="./app.js?v=20260608-school-info-directory"></script>
   </body>
 </html>

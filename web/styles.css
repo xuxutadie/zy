@@ -155,8 +155,20 @@ select:focus-visible {
 
 .nav {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin-top: 24px;
+}
+
+.nav-group {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-group-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 6px;
+  align-items: stretch;
 }
 
 .nav a {
@@ -173,23 +185,43 @@ select:focus-visible {
     color 0.16s ease;
 }
 
+.nav-toggle {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0;
+  border: 1px solid #d8c292;
+  border-radius: 8px;
+  background: rgba(255, 247, 228, 0.78);
+  color: var(--primary-dark);
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.nav-toggle::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.16s ease;
+}
+
+.nav-toggle:hover {
+  background: #fff7e4;
+  border-color: #caa45d;
+}
+
 .nav a::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: var(--gold);
-}
-
-.nav a:nth-child(2)::before {
-  background: var(--gold);
-}
-
-.nav a:nth-child(3)::before {
-  background: var(--gold);
-}
-
-.nav a:nth-child(4)::before {
   background: var(--gold);
 }
 
@@ -199,6 +231,51 @@ select:focus-visible {
   color: var(--primary-dark);
   border-color: #d8c292;
   box-shadow: 0 10px 22px rgba(189, 139, 52, 0.16);
+}
+
+.nav-primary {
+  font-weight: 800;
+}
+
+.nav-group.active-group .nav-primary:not(.active) {
+  background: rgba(255, 247, 228, 0.72);
+  border-color: rgba(216, 194, 146, 0.72);
+  color: var(--primary-dark);
+}
+
+.subnav {
+  display: grid;
+  gap: 6px;
+  padding-left: 13px;
+  margin-left: 8px;
+  border-left: 1px solid rgba(189, 139, 52, 0.3);
+}
+
+.nav-group[data-collapsed="true"] .subnav {
+  display: none;
+}
+
+.nav-group[data-collapsed="true"] .nav-toggle::before {
+  transform: rotate(-45deg);
+}
+
+.subnav a {
+  padding: 8px 10px 8px 12px;
+  font-size: 14px;
+  color: rgba(33, 29, 67, 0.82);
+  background: rgba(255, 250, 240, 0.62);
+}
+
+.subnav a::before {
+  width: 3px;
+  opacity: 0.66;
+}
+
+.subnav a:hover,
+.subnav a.active {
+  background: #fffaf0;
+  border-color: #e4d4af;
+  box-shadow: 0 6px 14px rgba(189, 139, 52, 0.1);
 }
 
 .workspace {
@@ -645,13 +722,14 @@ body.auth-locked .app-shell {
 
 .account-panel {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
   margin-top: auto;
-  padding: 12px;
+  padding: 8px;
   border: 1px solid #d5c3a0;
   border-radius: 8px;
   background: #fffaf0;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 8px 20px rgba(31, 26, 43, 0.08);
 }
 
 .account-panel[hidden] {
@@ -660,28 +738,38 @@ body.auth-locked .app-shell {
 
 .account-panel span,
 .account-panel strong {
+  grid-column: 1 / -1;
   color: var(--primary);
   font-weight: 800;
   white-space: nowrap;
 }
 
-.account-panel span {
+.account-panel strong {
   font-size: 13px;
+  line-height: 1.2;
+}
+
+.account-panel span {
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .account-panel a,
 .account-panel button {
   width: 100%;
-  padding: 7px 10px;
+  min-height: 30px;
+  padding: 5px 8px;
   border: 1px solid #d8c292;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #fff7e4;
   color: var(--primary-dark);
   text-decoration: none;
+  font-size: 13px;
   font-weight: 700;
+  line-height: 1.2;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(189, 139, 52, 0.12);
+  box-shadow: none;
 }
 
 .account-panel a:hover,
@@ -987,6 +1075,144 @@ body.auth-locked .app-shell {
   max-height: 360px;
   overflow: auto;
   padding-right: 4px;
+}
+
+.empty-state,
+.school-info-grid > div {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--neutral-soft);
+}
+
+.empty-state strong,
+.school-info-grid strong {
+  color: var(--primary-dark);
+  font-size: 16px;
+}
+
+.empty-state span,
+.school-info-grid span {
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.school-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.school-directory {
+  display: grid;
+  gap: 14px;
+}
+
+.directory-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.directory-summary > div {
+  display: grid;
+  gap: 6px;
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid #dcc89c;
+  border-radius: 8px;
+  background: #fffaf0;
+}
+
+.directory-summary strong {
+  color: var(--primary-dark);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.directory-summary span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.directory-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+}
+
+.directory-tools input,
+.directory-tools select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d8cfc1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-weight: 700;
+  padding: 9px 12px;
+}
+
+.directory-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.directory-table {
+  min-width: 960px;
+}
+
+.directory-table td strong,
+.directory-table td span {
+  display: block;
+}
+
+.alias-text {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.directory-status-pill {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid #d8c292;
+  border-radius: 999px;
+  background: #fff7e4;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.directory-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.inline-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 38px;
+  margin-top: 16px;
+  padding: 8px 14px;
+  border: 1px solid #d8c292;
+  border-radius: 8px;
+  background: #fff7e4;
+  color: var(--primary-dark);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.inline-action:hover {
+  background: #f7e7bf;
 }
 
 .source-card {
@@ -2096,6 +2322,18 @@ tbody tr:hover {
   .source-list {
     grid-template-columns: 1fr;
   }
+
+  .school-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .directory-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .directory-tools {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 360px) {
@@ -2197,7 +2435,8 @@ tbody tr:hover {
 
   .metrics,
   .band-tabs,
-  .guide-steps {
+  .guide-steps,
+  .directory-summary {
     grid-template-columns: 1fr;
   }
 
@@ -2206,6 +2445,14 @@ tbody tr:hover {
   }
 
   .nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nav-group {
+    grid-column: 1 / -1;
+  }
+
+  .subnav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
