@@ -18,6 +18,29 @@ python server.py
 - 主页面：http://localhost:8787/
 - 后台：http://localhost:8787/admin
 
+## Zeabur 部署
+
+项目已经包含 `zbpack.json`，Zeabur 会将 `server.py` 作为 Python 服务入口。
+
+本地等价启动命令为：
+
+```bash
+python server.py
+```
+
+部署时需要在 Zeabur 服务的环境变量中配置：
+
+```text
+GYZK_ADMIN_PHONES=18685442407
+```
+
+说明：
+
+- Zeabur 会自动注入 `PORT`，服务端会按平台端口启动。
+- 服务监听地址默认为 `0.0.0.0`，适合云平台访问。
+- 当前数据库为 SQLite，文件位于 `server/app.db`。如果正式收集用户数据，需要在 Zeabur 上给 `server/` 目录挂载持久化存储，或者后续升级为云数据库。
+- `server/sms_config.json` 不会提交到仓库，短信服务需要在部署环境中单独配置，避免泄露密钥或推送地址。
+
 ## 管理员配置
 
 管理员手机号不要写入代码仓库。启动服务前用环境变量配置，多个手机号用英文逗号分隔：

@@ -462,3 +462,208 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+/* Unified admin theme: match the main 贵阳教育导航 interface. */
+:root {
+  --bg: #f8fafc;
+  --panel: rgba(255, 255, 255, 0.96);
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #dbeafe;
+  --primary: #1e40af;
+  --primary-dark: #172554;
+  --gold: #d97706;
+  --wine: #b45309;
+  --wine-dark: #78350f;
+  --shadow: 0 22px 60px rgba(15, 23, 42, 0.11);
+}
+
+body {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(37, 99, 235, 0.16), transparent 30rem),
+    radial-gradient(circle at 92% 10%, rgba(217, 119, 6, 0.12), transparent 28rem),
+    linear-gradient(180deg, #f8fafc 0%, #eef4ff 48%, #f8fafc 100%);
+  color: var(--ink);
+}
+
+.admin-shell {
+  grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.admin-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.94)),
+    #ffffff;
+  border-right: 1px solid rgba(147, 197, 253, 0.52);
+  box-shadow: 16px 0 48px rgba(15, 23, 42, 0.08);
+}
+
+.admin-logo {
+  display: none !important;
+}
+
+.admin-sidebar > div::before {
+  content: "后台";
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1e40af, #2563eb);
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 900;
+  box-shadow: 0 16px 34px rgba(30, 64, 175, 0.28);
+}
+
+.admin-sidebar p {
+  margin: 0 0 6px;
+  color: var(--gold);
+}
+
+.admin-sidebar h1 {
+  color: var(--primary-dark);
+}
+
+.admin-subtitle {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-sidebar nav {
+  padding-top: 28px;
+  border-top: 1px solid rgba(147, 197, 253, 0.34);
+}
+
+.admin-sidebar a {
+  border-radius: 14px;
+  color: var(--primary-dark);
+  border-left: 4px solid rgba(217, 119, 6, 0.7);
+  background: rgba(255, 255, 255, 0.34);
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.admin-sidebar a.active,
+.admin-sidebar a:hover {
+  color: var(--primary-dark);
+  background: rgba(255, 247, 237, 0.92);
+  border-color: rgba(217, 119, 6, 0.95);
+  box-shadow: 0 16px 36px rgba(30, 64, 175, 0.1);
+}
+
+.admin-workspace {
+  color: var(--ink);
+}
+
+.admin-topbar {
+  padding: 22px 24px;
+  border: 1px solid rgba(147, 197, 253, 0.42);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 247, 237, 0.88)),
+    #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  color: var(--gold);
+}
+
+.admin-topbar h2 {
+  color: var(--primary-dark);
+}
+
+.admin-topbar span {
+  color: var(--muted);
+}
+
+.admin-actions,
+.admin-card,
+.admin-dialog-frame {
+  border-color: rgba(147, 197, 253, 0.42);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.admin-actions button,
+.admin-login-form button,
+.filter-actions button,
+.table-action,
+.follow-editor button,
+.admin-dialog-head button {
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e40af, #2563eb);
+  box-shadow: 0 12px 26px rgba(30, 64, 175, 0.16);
+}
+
+.admin-actions button:first-of-type,
+.admin-login-form button,
+.filter-actions button:first-child {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  box-shadow: 0 12px 26px rgba(217, 119, 6, 0.16);
+}
+
+.danger-action,
+.danger-action:hover {
+  background: linear-gradient(135deg, #b91c1c, #991b1b);
+}
+
+.admin-card-head {
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 247, 237, 0.88)),
+    #ffffff;
+}
+
+.admin-card-head h3,
+.admin-dialog-head h3 {
+  color: var(--primary-dark);
+}
+
+.admin-login-form input,
+.admin-filter-form input,
+.admin-filter-form select,
+.follow-editor select,
+.follow-editor textarea {
+  border-color: #bfdbfe;
+  background: #ffffff;
+}
+
+.admin-message,
+.status-badge,
+.detail-grid div {
+  border-color: rgba(147, 197, 253, 0.38);
+  background: #eff6ff;
+}
+
+.admin-stats div {
+  border-color: rgba(147, 197, 253, 0.42);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+table th {
+  background: #eff6ff;
+  color: var(--primary-dark);
+}
+
+tbody tr:hover {
+  background: #f8fbff;
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    height: auto;
+  }
+}

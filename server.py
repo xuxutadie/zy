@@ -22,8 +22,8 @@ WEB_DIR = ROOT_DIR / "web"
 SERVER_DIR = ROOT_DIR / "server"
 DB_PATH = SERVER_DIR / "app.db"
 SMS_CONFIG_PATH = SERVER_DIR / "sms_config.json"
-HOST = "127.0.0.1"
-PORT = 8787
+HOST = os.environ.get("HOST", "0.0.0.0")
+PORT = int(os.environ.get("PORT", "8787"))
 SESSION_DAYS = 7
 CODE_TTL_SECONDS = 10 * 60
 ADMIN_PHONES = {phone.strip() for phone in os.environ.get("GYZK_ADMIN_PHONES", "").split(",") if phone.strip()}
@@ -318,7 +318,7 @@ def current_user(handler: BaseHTTPRequestHandler) -> sqlite3.Row | None:
     with db() as conn:
         row = conn.execute(
             """
-            SELECT users.id, users.phone, users.created_at, users.last_login_at
+            SELECT users.id, users.phone, users.created_at, users.last_login_at, users.role, users.status
             FROM sessions
             JOIN users ON users.id = sessions.user_id
             WHERE sessions.token = ? AND sessions.expires_at > ?
@@ -336,7 +336,16 @@ def require_user(handler: BaseHTTPRequestHandler) -> sqlite3.Row | None:
 
 
 def is_admin_user(user: sqlite3.Row | None) -> bool:
-    return bool(user and user["phone"] in ADMIN_PHONES)
+    if not user:
+        return False
+    try:
+        if user["status"] != "active":
+            return False
+        if user["role"] == "admin":
+            return True
+    except (IndexError, KeyError):
+        pass
+    return user["phone"] in ADMIN_PHONES
 
 
 def require_admin(handler: BaseHTTPRequestHandler) -> sqlite3.Row | None:
@@ -480,7 +489,7 @@ def handle_register(handler: BaseHTTPRequestHandler) -> None:
 
     token = create_session(user_id)
     with db() as conn:
-        user = conn.execute("SELECT id, phone, created_at, last_login_at FROM users WHERE id = ?", (user_id,)).fetchone()
+        user = conn.execute("SELECT id, phone, created_at, last_login_at, role, status FROM users WHERE id = ?", (user_id,)).fetchone()
     json_response(handler, 200, {"ok": True, "message": "注册成功", "token": token, "user": user_payload(user)})
 
 
@@ -501,7 +510,7 @@ def handle_login(handler: BaseHTTPRequestHandler) -> None:
     token = create_session(int(user["id"]))
     with db() as conn:
         safe_user = conn.execute(
-            "SELECT id, phone, created_at, last_login_at FROM users WHERE id = ?",
+            "SELECT id, phone, created_at, last_login_at, role, status FROM users WHERE id = ?",
             (user["id"],),
         ).fetchone()
     json_response(handler, 200, {"ok": True, "message": "登录成功", "token": token, "user": user_payload(safe_user)})
@@ -991,7 +1000,9 @@ class AppHandler(BaseHTTPRequestHandler):
 def main() -> None:
     init_db()
     httpd = ThreadingHTTPServer((HOST, PORT), AppHandler)
-    print(f"服务已启动：http://{HOST}:{PORT}/")
+    display_host = "localhost" if HOST in {"0.0.0.0", "::"} else HOST
+    print(f"服务已启动：http://{display_host}:{PORT}/")
+    print(f"监听地址：{HOST}:{PORT}")
     print(f"数据库位置：{DB_PATH}")
     httpd.serve_forever()
 
