@@ -14,7 +14,13 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, urlparse
+
+try:
+    import psycopg
+except ImportError:
+    psycopg = None
 
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -24,6 +30,14 @@ DB_PATH = SERVER_DIR / "app.db"
 SMS_CONFIG_PATH = SERVER_DIR / "sms_config.json"
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8787"))
+DATABASE_URL = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("POSTGRES_URL")
+    or os.environ.get("POSTGRES_CONNECTION_STRING")
+    or os.environ.get("POSTGRESQL_URL")
+    or ""
+).strip()
+DB_BACKEND = "postgres" if DATABASE_URL else "sqlite"
 SESSION_DAYS = 7
 CODE_TTL_SECONDS = 10 * 60
 ADMIN_PHONES = {phone.strip() for phone in os.environ.get("GYZK_ADMIN_PHONES", "").split(",") if phone.strip()}
@@ -33,21 +47,127 @@ def now_ts() -> int:
     return int(time.time())
 
 
+class DbRow(dict):
+    def __init__(self, values: dict[str, Any], columns: list[str]) -> None:
+        super().__init__(values)
+        self._columns = columns
+
+    def __getitem__(self, key: str | int) -> Any:
+        if isinstance(key, int):
+            return super().__getitem__(self._columns[key])
+        return super().__getitem__(key)
+
+
+class DbCursor:
+    def __init__(self, cursor: Any) -> None:
+        self.cursor = cursor
+        self.lastrowid = getattr(cursor, "lastrowid", None)
+
+    def _columns(self) -> list[str]:
+        columns = []
+        for item in self.cursor.description or []:
+            columns.append(getattr(item, "name", None) or item[0])
+        return columns
+
+    def _row(self, raw: Any) -> DbRow | None:
+        if raw is None:
+            return None
+        if isinstance(raw, DbRow):
+            return raw
+        if isinstance(raw, sqlite3.Row):
+            columns = list(raw.keys())
+            return DbRow({column: raw[column] for column in columns}, columns)
+        columns = self._columns()
+        if isinstance(raw, dict):
+            return DbRow(raw, columns or list(raw.keys()))
+        return DbRow(dict(zip(columns, raw)), columns)
+
+    def fetchone(self) -> DbRow | None:
+        return self._row(self.cursor.fetchone())
+
+    def fetchall(self) -> list[DbRow]:
+        return [row for row in (self._row(raw) for raw in self.cursor.fetchall()) if row is not None]
+
+
+class DbConnection:
+    def __init__(self, conn: Any, backend: str) -> None:
+        self.conn = conn
+        self.backend = backend
+
+    def __enter__(self) -> "DbConnection":
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        if exc_type:
+            self.conn.rollback()
+        self.conn.close()
+
+    def _sql(self, sql: str) -> str:
+        if self.backend == "postgres":
+            return sql.replace("?", "%s")
+        return sql
+
+    def execute(self, sql: str, params: tuple | list = ()) -> DbCursor:
+        return DbCursor(self.conn.execute(self._sql(sql), tuple(params)))
+
+    def commit(self) -> None:
+        self.conn.commit()
+
+    def rollback(self) -> None:
+        self.conn.rollback()
+
+
+def db() -> DbConnection:
+    if DB_BACKEND == "postgres":
+        if psycopg is None:
+            raise RuntimeError("已配置 DATABASE_URL，但缺少 PostgreSQL 驱动 psycopg。请安装 requirements.txt。")
+        return DbConnection(psycopg.connect(DATABASE_URL), "postgres")
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return DbConnection(conn, "sqlite")
+
+
+def insert_and_get_id(conn: DbConnection, sql: str, params: tuple) -> int:
+    if conn.backend == "postgres":
+        cursor = conn.execute(f"{sql.rstrip()} RETURNING id", params)
+        row = cursor.fetchone()
+        return int(row[0])
+    cursor = conn.execute(sql, params)
+    return int(cursor.lastrowid)
+
+
+def postgres_table(sqlite_sql: str, postgres_sql: str) -> str:
+    return postgres_sql if DB_BACKEND == "postgres" else sqlite_sql
+
+
 def init_db() -> None:
     SERVER_DIR.mkdir(exist_ok=True)
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("PRAGMA journal_mode=WAL")
+    with db() as conn:
+        if conn.backend == "sqlite":
+            conn.execute("PRAGMA journal_mode=WAL")
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              phone TEXT NOT NULL UNIQUE,
-              password_hash TEXT NOT NULL,
-              password_salt TEXT NOT NULL,
-              created_at INTEGER NOT NULL,
-              last_login_at INTEGER
-            )
-            """,
+            postgres_table(
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  phone TEXT NOT NULL UNIQUE,
+                  password_hash TEXT NOT NULL,
+                  password_salt TEXT NOT NULL,
+                  created_at INTEGER NOT NULL,
+                  last_login_at INTEGER
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                  phone TEXT NOT NULL UNIQUE,
+                  password_hash TEXT NOT NULL,
+                  password_salt TEXT NOT NULL,
+                  created_at INTEGER NOT NULL,
+                  last_login_at INTEGER
+                )
+                """,
+            ),
         )
         ensure_column(conn, "users", "role", "TEXT NOT NULL DEFAULT 'parent'")
         ensure_column(conn, "users", "status", "TEXT NOT NULL DEFAULT 'active'")
@@ -55,33 +175,62 @@ def init_db() -> None:
         for phone in ADMIN_PHONES:
             conn.execute("UPDATE users SET role = 'admin', status = 'active', updated_at = ? WHERE phone = ?", (now_ts(), phone))
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sms_codes (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              phone TEXT NOT NULL,
-              code_hash TEXT NOT NULL,
-              code_salt TEXT NOT NULL,
-              expires_at INTEGER NOT NULL,
-              used_at INTEGER,
-              created_at INTEGER NOT NULL,
-              send_ip TEXT
-            )
-            """,
+            postgres_table(
+                """
+                CREATE TABLE IF NOT EXISTS sms_codes (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  phone TEXT NOT NULL,
+                  code_hash TEXT NOT NULL,
+                  code_salt TEXT NOT NULL,
+                  expires_at INTEGER NOT NULL,
+                  used_at INTEGER,
+                  created_at INTEGER NOT NULL,
+                  send_ip TEXT
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS sms_codes (
+                  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                  phone TEXT NOT NULL,
+                  code_hash TEXT NOT NULL,
+                  code_salt TEXT NOT NULL,
+                  expires_at INTEGER NOT NULL,
+                  used_at INTEGER,
+                  created_at INTEGER NOT NULL,
+                  send_ip TEXT
+                )
+                """,
+            ),
         )
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sms_logs (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              phone TEXT NOT NULL,
-              provider TEXT NOT NULL,
-              template_id TEXT,
-              success INTEGER NOT NULL DEFAULT 0,
-              response_text TEXT,
-              error_message TEXT,
-              created_at INTEGER NOT NULL,
-              client_ip TEXT
-            )
-            """,
+            postgres_table(
+                """
+                CREATE TABLE IF NOT EXISTS sms_logs (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  phone TEXT NOT NULL,
+                  provider TEXT NOT NULL,
+                  template_id TEXT,
+                  success INTEGER NOT NULL DEFAULT 0,
+                  response_text TEXT,
+                  error_message TEXT,
+                  created_at INTEGER NOT NULL,
+                  client_ip TEXT
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS sms_logs (
+                  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                  phone TEXT NOT NULL,
+                  provider TEXT NOT NULL,
+                  template_id TEXT,
+                  success INTEGER NOT NULL DEFAULT 0,
+                  response_text TEXT,
+                  error_message TEXT,
+                  created_at INTEGER NOT NULL,
+                  client_ip TEXT
+                )
+                """,
+            ),
         )
         conn.execute(
             """
@@ -95,28 +244,52 @@ def init_db() -> None:
             """,
         )
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS calculator_submissions (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_id INTEGER NOT NULL,
-              phone TEXT NOT NULL,
-              score REAL NOT NULL,
-              region TEXT,
-              middle_school TEXT,
-              city_rank INTEGER,
-              area_rank INTEGER,
-              estimated_area_rank INTEGER,
-              quota_rank INTEGER,
-              has_quota INTEGER NOT NULL DEFAULT 0,
-              accept_private INTEGER NOT NULL DEFAULT 0,
-              non_score_subjects_json TEXT NOT NULL,
-              subject_eligibility_json TEXT NOT NULL,
-              result_summary_json TEXT NOT NULL,
-              created_at INTEGER NOT NULL,
-              client_ip TEXT,
-              FOREIGN KEY(user_id) REFERENCES users(id)
-            )
-            """,
+            postgres_table(
+                """
+                CREATE TABLE IF NOT EXISTS calculator_submissions (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id INTEGER NOT NULL,
+                  phone TEXT NOT NULL,
+                  score REAL NOT NULL,
+                  region TEXT,
+                  middle_school TEXT,
+                  city_rank INTEGER,
+                  area_rank INTEGER,
+                  estimated_area_rank INTEGER,
+                  quota_rank INTEGER,
+                  has_quota INTEGER NOT NULL DEFAULT 0,
+                  accept_private INTEGER NOT NULL DEFAULT 0,
+                  non_score_subjects_json TEXT NOT NULL,
+                  subject_eligibility_json TEXT NOT NULL,
+                  result_summary_json TEXT NOT NULL,
+                  created_at INTEGER NOT NULL,
+                  client_ip TEXT,
+                  FOREIGN KEY(user_id) REFERENCES users(id)
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS calculator_submissions (
+                  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                  user_id INTEGER NOT NULL,
+                  phone TEXT NOT NULL,
+                  score DOUBLE PRECISION NOT NULL,
+                  region TEXT,
+                  middle_school TEXT,
+                  city_rank INTEGER,
+                  area_rank INTEGER,
+                  estimated_area_rank INTEGER,
+                  quota_rank INTEGER,
+                  has_quota INTEGER NOT NULL DEFAULT 0,
+                  accept_private INTEGER NOT NULL DEFAULT 0,
+                  non_score_subjects_json TEXT NOT NULL,
+                  subject_eligibility_json TEXT NOT NULL,
+                  result_summary_json TEXT NOT NULL,
+                  created_at INTEGER NOT NULL,
+                  client_ip TEXT,
+                  FOREIGN KEY(user_id) REFERENCES users(id)
+                )
+                """,
+            ),
         )
         ensure_column(conn, "calculator_submissions", "follow_status", "TEXT NOT NULL DEFAULT '未联系'")
         ensure_column(conn, "calculator_submissions", "admin_note", "TEXT NOT NULL DEFAULT ''")
@@ -126,46 +299,79 @@ def init_db() -> None:
         ensure_column(conn, "calculator_submissions", "deleted_by", "INTEGER")
         ensure_column(conn, "calculator_submissions", "delete_reason", "TEXT NOT NULL DEFAULT ''")
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS submission_events (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              submission_id INTEGER NOT NULL,
-              admin_user_id INTEGER NOT NULL,
-              event_type TEXT NOT NULL,
-              before_json TEXT NOT NULL DEFAULT '{}',
-              after_json TEXT NOT NULL DEFAULT '{}',
-              created_at INTEGER NOT NULL,
-              FOREIGN KEY(submission_id) REFERENCES calculator_submissions(id),
-              FOREIGN KEY(admin_user_id) REFERENCES users(id)
-            )
-            """,
+            postgres_table(
+                """
+                CREATE TABLE IF NOT EXISTS submission_events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  submission_id INTEGER NOT NULL,
+                  admin_user_id INTEGER NOT NULL,
+                  event_type TEXT NOT NULL,
+                  before_json TEXT NOT NULL DEFAULT '{}',
+                  after_json TEXT NOT NULL DEFAULT '{}',
+                  created_at INTEGER NOT NULL,
+                  FOREIGN KEY(submission_id) REFERENCES calculator_submissions(id),
+                  FOREIGN KEY(admin_user_id) REFERENCES users(id)
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS submission_events (
+                  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                  submission_id INTEGER NOT NULL,
+                  admin_user_id INTEGER NOT NULL,
+                  event_type TEXT NOT NULL,
+                  before_json TEXT NOT NULL DEFAULT '{}',
+                  after_json TEXT NOT NULL DEFAULT '{}',
+                  created_at INTEGER NOT NULL,
+                  FOREIGN KEY(submission_id) REFERENCES calculator_submissions(id),
+                  FOREIGN KEY(admin_user_id) REFERENCES users(id)
+                )
+                """,
+            ),
         )
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS audit_logs (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_id INTEGER,
-              phone TEXT,
-              action TEXT NOT NULL,
-              detail_json TEXT NOT NULL DEFAULT '{}',
-              created_at INTEGER NOT NULL,
-              client_ip TEXT
-            )
-            """,
+            postgres_table(
+                """
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id INTEGER,
+                  phone TEXT,
+                  action TEXT NOT NULL,
+                  detail_json TEXT NOT NULL DEFAULT '{}',
+                  created_at INTEGER NOT NULL,
+                  client_ip TEXT
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                  id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                  user_id INTEGER,
+                  phone TEXT,
+                  action TEXT NOT NULL,
+                  detail_json TEXT NOT NULL DEFAULT '{}',
+                  created_at INTEGER NOT NULL,
+                  client_ip TEXT
+                )
+                """,
+            ),
         )
         conn.commit()
 
 
-def ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
-    columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+def ensure_column(conn: DbConnection, table: str, column: str, definition: str) -> None:
+    if conn.backend == "postgres":
+        rows = conn.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = ?
+            """,
+            (table,),
+        ).fetchall()
+        columns = {row["column_name"] for row in rows}
+    else:
+        columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
     if column not in columns:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-
-
-def db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict) -> None:
@@ -477,7 +683,8 @@ def handle_register(handler: BaseHTTPRequestHandler) -> None:
             json_response(handler, 400, {"ok": False, "message": message})
             return
         password_hash, password_salt = make_password(password)
-        cursor = conn.execute(
+        user_id = insert_and_get_id(
+            conn,
             """
             INSERT INTO users (phone, password_hash, password_salt, created_at)
             VALUES (?, ?, ?, ?)
@@ -485,7 +692,6 @@ def handle_register(handler: BaseHTTPRequestHandler) -> None:
             (phone, password_hash, password_salt, now_ts()),
         )
         conn.commit()
-        user_id = int(cursor.lastrowid)
 
     token = create_session(user_id)
     with db() as conn:
@@ -689,7 +895,8 @@ def handle_create_calculator_submission(handler: BaseHTTPRequestHandler) -> None
         return
 
     with db() as conn:
-        cursor = conn.execute(
+        submission_id = insert_and_get_id(
+            conn,
             """
             INSERT INTO calculator_submissions (
               user_id, phone, score, region, middle_school, city_rank, area_rank,
@@ -719,7 +926,6 @@ def handle_create_calculator_submission(handler: BaseHTTPRequestHandler) -> None
             ),
         )
         conn.commit()
-        submission_id = int(cursor.lastrowid)
 
     json_response(handler, 200, {"ok": True, "message": "测算表单已保存", "id": submission_id})
 
@@ -1003,7 +1209,10 @@ def main() -> None:
     display_host = "localhost" if HOST in {"0.0.0.0", "::"} else HOST
     print(f"服务已启动：http://{display_host}:{PORT}/")
     print(f"监听地址：{HOST}:{PORT}")
-    print(f"数据库位置：{DB_PATH}")
+    if DB_BACKEND == "postgres":
+        print("数据库模式：PostgreSQL")
+    else:
+        print(f"数据库模式：SQLite，位置：{DB_PATH}")
     httpd.serve_forever()
 
 
