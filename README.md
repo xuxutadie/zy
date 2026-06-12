@@ -20,7 +20,7 @@ python server.py
 
 ## Zeabur 部署
 
-项目已经包含 `zbpack.json`，Zeabur 会将 `server.py` 作为 Python 服务入口。
+项目已经包含 `Dockerfile`，Zeabur 会按 Python 后端容器运行 `server.py`。
 
 本地等价启动命令为：
 
