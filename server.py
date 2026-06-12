@@ -30,13 +30,22 @@ DB_PATH = SERVER_DIR / "app.db"
 SMS_CONFIG_PATH = SERVER_DIR / "sms_config.json"
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8787"))
-DATABASE_URL = (
-    os.environ.get("DATABASE_URL")
-    or os.environ.get("POSTGRES_URL")
-    or os.environ.get("POSTGRES_CONNECTION_STRING")
-    or os.environ.get("POSTGRESQL_URL")
-    or ""
-).strip()
+def env_value(*names: str) -> str:
+    for name in names:
+        value = (os.environ.get(name) or "").strip()
+        # Zeabur 变量未解析时可能保留为 ${POSTGRES_URI}，不能当成真实连接串使用。
+        if value and not (value.startswith("${") and value.endswith("}")):
+            return value
+    return ""
+
+
+DATABASE_URL = env_value(
+    "DATABASE_URL",
+    "POSTGRES_CONNECTION_STRING",
+    "POSTGRES_URI",
+    "POSTGRES_URL",
+    "POSTGRESQL_URL",
+)
 DB_BACKEND = "postgres" if DATABASE_URL else "sqlite"
 SESSION_DAYS = 7
 CODE_TTL_SECONDS = 10 * 60
