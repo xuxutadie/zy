@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17172f" />
     <title>贵阳教育导航</title>
-    <link rel="stylesheet" href="./styles.css?v=20260613-education-news" />
+    <link rel="stylesheet" href="./styles.css?v=20260613-competition-events" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">跳到主要内容</a>
@@ -291,6 +291,10 @@
               <p class="eyebrow">Primary School Query</p>
               <h2>小学信息查询</h2>
             </div>
+            <label class="school-page-search">
+              <span>搜索小学</span>
+              <input type="search" placeholder="输入学校名、区域或地址" data-stage-search="小学" />
+            </label>
           </div>
           <div class="school-directory" data-stage="小学"></div>
         </section>
@@ -301,6 +305,10 @@
               <p class="eyebrow">Junior High Query</p>
               <h2>初中信息查询</h2>
             </div>
+            <label class="school-page-search">
+              <span>搜索初中</span>
+              <input type="search" placeholder="输入学校名、区域或地址" data-stage-search="初中" />
+            </label>
           </div>
           <div class="school-directory" data-stage="初中"></div>
         </section>
@@ -311,6 +319,10 @@
               <p class="eyebrow">High School Query</p>
               <h2>高中信息查询</h2>
             </div>
+            <label class="school-page-search">
+              <span>搜索高中</span>
+              <input type="search" placeholder="输入学校名、区域或地址" data-stage-search="高中" />
+            </label>
           </div>
           <div class="school-directory" data-stage="高中"></div>
           <a class="inline-action" href="?page=schools">查看2025年高中录取线</a>
@@ -349,11 +361,9 @@
               <p class="eyebrow">Competition Insights</p>
               <h2>赛事信息解读</h2>
             </div>
+            <span id="competitionEventSummary">正在加载贵青杯赛事目录...</span>
           </div>
-          <div class="empty-state">
-            <strong>赛事信息内容待补充</strong>
-            <span>后续可整理白名单赛事、科技创新赛事、AI竞赛、报名节点、适合年级和备赛建议。</span>
-          </div>
+          <div id="competitionEventList" class="competition-events"></div>
         </section>
 
         <section id="data" class="section data-grid" data-route hidden>
@@ -386,6 +396,6 @@
         </section>
       </main>
     </div>
-    <script src="./app.js?v=20260613-education-news"></script>
+    <script src="./app.js?v=20260613-competition-events"></script>
   </body>
 </html>

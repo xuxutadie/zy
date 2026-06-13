@@ -2,6 +2,7 @@ const state = {
   data: null,
   schoolInfo: null,
   educationNews: null,
+  competitionEvents: null,
   schoolInfoFilters: {},
   currentBand: "稳一稳",
   results: [],
@@ -1063,6 +1064,69 @@ function renderEducationNews() {
     .join("");
 }
 
+function renderCompetitionEvents() {
+  const list = document.querySelector("#competitionEventList");
+  const summary = document.querySelector("#competitionEventSummary");
+  if (!list) return;
+  const events = state.competitionEvents?.events || [];
+  const meta = state.competitionEvents?.meta || {};
+  if (summary) {
+    summary.textContent = events.length
+      ? `已整理 ${events.length} 条“贵青杯”赛事/活动信息，重点展示赛事名称、适合学段与关键时间节点。`
+      : "赛事信息正在整理中。";
+  }
+  if (!events.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <strong>赛事信息内容待补充</strong>
+        <span>后续可整理白名单赛事、科技创新赛事、AI竞赛、报名节点、适合年级和备赛建议。</span>
+      </div>
+    `;
+    return;
+  }
+  const categoryCount = uniqueValues(events.map((event) => event.category)).length;
+  list.innerHTML = `
+    <div class="competition-summary">
+      <div>
+        <strong>${events.length.toLocaleString()} 条</strong>
+        <span>赛事/活动条目</span>
+      </div>
+      <div>
+        <strong>${categoryCount.toLocaleString()} 类</strong>
+        <span>覆盖阅读、科技、美育、体育等方向</span>
+      </div>
+      <div>
+        <strong>2026</strong>
+        <span>贵青杯年度目录</span>
+      </div>
+    </div>
+    <div class="competition-source">
+      <strong>资料来源</strong>
+      <span>${escapeHtml(meta.source || "用户提供的官方PDF")}</span>
+    </div>
+    <div class="competition-event-grid">
+      ${events
+        .map(
+          (event) => `
+            <article class="competition-card">
+              <div class="competition-card-head">
+                <span>${String(event.order).padStart(2, "0")}</span>
+                <em>${escapeHtml(event.category)}</em>
+              </div>
+              <h3>${escapeHtml(event.name)}</h3>
+              <p>${escapeHtml(event.stage)}</p>
+              <ul>
+                ${(event.timeline || []).map((time) => `<li>${escapeHtml(time)}</li>`).join("")}
+              </ul>
+              <div class="competition-note">${escapeHtml(event.note || "以官方后续通知为准。")}</div>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function getSchoolInfoByStage(stage) {
   return (state.schoolInfo?.schools || []).filter((school) => school.stage === stage);
 }
@@ -1208,9 +1272,30 @@ function renderSchoolDirectories() {
   });
 }
 
+function getSchoolDirectoryContainer(stage) {
+  return [...document.querySelectorAll(".school-directory")].find((container) => container.dataset.stage === stage);
+}
+
+function syncSchoolHeaderSearch(stage) {
+  const input = document.querySelector(`[data-stage-search="${stage}"]`);
+  if (input) input.value = getSchoolDirectoryFilter(stage).keyword;
+}
+
+function setupSchoolHeaderSearch() {
+  document.querySelectorAll("[data-stage-search]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const stage = event.target.dataset.stageSearch;
+      getSchoolDirectoryFilter(stage).keyword = event.target.value;
+      const container = getSchoolDirectoryContainer(stage);
+      if (container) renderSchoolDirectory(container, stage);
+    });
+  });
+}
+
 function renderSchoolDirectory(container, stage) {
   const items = getSchoolInfoByStage(stage);
   const filter = getSchoolDirectoryFilter(stage);
+  syncSchoolHeaderSearch(stage);
   const districts = uniqueValues(items.map((school) => school.district)).sort();
   const keyword = filter.keyword.trim().toLowerCase();
   const filtered = items
@@ -1636,13 +1721,17 @@ async function startApp() {
   state.schoolInfo = await schoolInfoResponse.json();
   const educationNewsResponse = await fetch(`./data/education-news.json?v=${Date.now()}`, { cache: "no-store" });
   state.educationNews = await educationNewsResponse.json();
+  const competitionEventsResponse = await fetch(`./data/competition-events-2026.json?v=${Date.now()}`, { cache: "no-store" });
+  state.competitionEvents = await competitionEventsResponse.json();
   document.querySelector("#dataStatus").textContent = "2026计划与2025参考数据已加载";
   renderMetrics();
   renderSourceOverview();
   renderDataSources();
   renderEducationNews();
+  renderCompetitionEvents();
   renderSchoolTable();
   renderSchoolDirectories();
+  setupSchoolHeaderSearch();
   updateAutoRankInputs();
   updateQuotaRankHint();
   renderEmptyResults();

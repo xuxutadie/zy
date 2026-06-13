@@ -1010,6 +1010,46 @@ body.auth-locked .app-shell {
   text-wrap: balance;
 }
 
+.school-page-search {
+  width: min(440px, 46%);
+  min-width: 280px;
+  display: grid;
+  gap: 6px;
+}
+
+.school-page-search span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.school-page-search input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cfe0ff;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--primary-dark);
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+  padding: 0 18px;
+  box-shadow: 0 14px 32px rgba(48, 86, 150, 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.school-page-search input::placeholder {
+  color: #8a96a8;
+  font-weight: 600;
+}
+
+.school-page-search input:focus {
+  border-color: #2c63d6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(44, 99, 214, 0.14), 0 16px 34px rgba(48, 86, 150, 0.12);
+}
+
 .panel-disclaimer {
   align-self: flex-end;
   margin: 0 6px 2px auto;
@@ -1337,6 +1377,159 @@ body.auth-locked .app-shell {
 
 .education-news-footer a:hover {
   color: var(--wine-dark);
+}
+
+.competition-events {
+  display: grid;
+  gap: 16px;
+}
+
+.competition-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.competition-summary > div,
+.competition-source,
+.competition-card {
+  border: 1px solid rgba(188, 174, 157, 0.86);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 246, 238, 0.95)),
+    var(--panel);
+  box-shadow: 0 16px 34px rgba(23, 21, 46, 0.08);
+}
+
+.competition-summary > div {
+  display: grid;
+  gap: 6px;
+  min-height: 104px;
+  padding: 18px;
+  border-top: 4px solid var(--sapphire);
+}
+
+.competition-summary strong {
+  color: var(--primary-dark);
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.competition-summary span {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.competition-source {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(251, 241, 216, 0.88), rgba(235, 244, 255, 0.82));
+}
+
+.competition-source strong {
+  color: var(--gold-dark);
+  white-space: nowrap;
+}
+
+.competition-source span {
+  color: var(--muted);
+  line-height: 1.7;
+  text-align: right;
+}
+
+.competition-event-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.competition-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.competition-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, var(--sapphire), var(--gold));
+}
+
+.competition-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.competition-card-head span {
+  color: var(--gold-dark);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.competition-card-head em {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--sapphire-soft);
+  color: var(--sapphire);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.competition-card h3 {
+  margin: 0;
+  color: var(--primary-dark);
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.competition-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.competition-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.competition-card li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--primary-dark);
+  line-height: 1.65;
+}
+
+.competition-card li::before {
+  content: "";
+  position: absolute;
+  top: 0.72em;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.competition-note {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(235, 244, 255, 0.82);
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .school-directory {
@@ -2732,6 +2925,20 @@ tbody tr:hover {
   }
 
   .education-news-head span {
+    text-align: left;
+  }
+
+  .school-info-page .panel-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .school-page-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .school-page-search span {
     text-align: left;
   }
 
@@ -4170,6 +4377,19 @@ body.sidebar-collapsed .account-trigger::after {
 }
 
 @media (max-width: 1080px) {
+  .competition-summary,
+  .competition-event-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .competition-source {
+    display: grid;
+  }
+
+  .competition-source span {
+    text-align: left;
+  }
+
   .auth-gate > .auth-shell {
     grid-template-columns: 1fr;
     width: min(720px, calc(100% - 32px));
