@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17172f" />
     <title>贵阳教育导航</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611-calc-disclaimer-offset" />
+    <link rel="stylesheet" href="./styles.css?v=20260613-education-news" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">跳到主要内容</a>
@@ -323,10 +323,11 @@
               <h2>教育资讯分享</h2>
             </div>
           </div>
-          <div class="empty-state">
-            <strong>教育资讯内容待补充</strong>
-            <span>后续可接入升学政策、教育动态、志愿填报提醒、考试节点和家长常见问题，形成资讯分享页面。</span>
+          <div class="education-news-head">
+            <strong>官方资讯精选</strong>
+            <span id="educationNewsSummary">正在加载教育资讯来源...</span>
           </div>
+          <div id="educationNewsList" class="education-news-grid"></div>
         </section>
 
         <section id="training-recommendations" class="section panel content-page" data-route hidden>
@@ -385,6 +386,6 @@
         </section>
       </main>
     </div>
-    <script src="./app.js?v=20260611-calc-disclaimer-offset"></script>
+    <script src="./app.js?v=20260613-education-news"></script>
   </body>
 </html>

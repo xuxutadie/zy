@@ -1233,6 +1233,112 @@ body.auth-locked .app-shell {
   gap: 12px;
 }
 
+.education-news-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid rgba(189, 139, 52, 0.34);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(251, 241, 216, 0.86), rgba(234, 241, 247, 0.72));
+  box-shadow: var(--shadow-soft);
+}
+
+.education-news-head strong {
+  color: var(--primary-dark);
+  font-size: 18px;
+}
+
+.education-news-head span {
+  color: var(--muted);
+  line-height: 1.7;
+  text-align: right;
+}
+
+.education-news-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.education-news-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(188, 174, 157, 0.86);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 246, 238, 0.96)),
+    var(--panel);
+  box-shadow: 0 16px 34px rgba(23, 21, 46, 0.08);
+}
+
+.education-news-meta,
+.education-news-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.education-news-meta span {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--sapphire-soft);
+  color: var(--sapphire);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.education-news-meta time,
+.education-news-footer span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.education-news-card h3 {
+  margin: 0;
+  color: var(--primary-dark);
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.education-news-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.education-news-focus {
+  padding: 12px 14px;
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  background: rgba(251, 241, 216, 0.7);
+  color: var(--primary-dark);
+  line-height: 1.7;
+}
+
+.education-news-focus strong {
+  color: var(--gold-dark);
+}
+
+.education-news-footer {
+  padding-top: 4px;
+  border-top: 1px solid rgba(222, 212, 197, 0.8);
+}
+
+.education-news-footer a {
+  color: var(--wine);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.education-news-footer a:hover {
+  color: var(--wine-dark);
+}
+
 .school-directory {
   display: grid;
   gap: 14px;
@@ -2615,8 +2721,18 @@ tbody tr:hover {
 
   .calculator-layout,
   .dashboard-grid,
-  .data-grid {
+  .data-grid,
+  .education-news-grid {
     grid-template-columns: 1fr;
+  }
+
+  .education-news-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .education-news-head span {
+    text-align: left;
   }
 
   .calc-form-grid {

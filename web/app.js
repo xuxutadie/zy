@@ -1,6 +1,7 @@
 const state = {
   data: null,
   schoolInfo: null,
+  educationNews: null,
   schoolInfoFilters: {},
   currentBand: "稳一稳",
   results: [],
@@ -1021,6 +1022,47 @@ function formatSchoolAddress(address) {
   return value && value !== "（待补充）" ? value : "地址待补充";
 }
 
+function renderEducationNews() {
+  const container = document.querySelector("#educationNewsList");
+  const summary = document.querySelector("#educationNewsSummary");
+  if (!container) return;
+  const items = state.educationNews?.items || [];
+  if (summary) {
+    const updatedAt = state.educationNews?.meta?.updatedAt || "待更新";
+    summary.textContent = `已整理 ${items.length} 条官方教育资讯，更新于 ${updatedAt}，每条均保留原文来源。`;
+  }
+  if (!items.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <strong>教育资讯内容待补充</strong>
+        <span>后续可接入升学政策、教育动态、志愿填报提醒、考试节点和家长常见问题，形成资讯分享页面。</span>
+      </div>
+    `;
+    return;
+  }
+  container.innerHTML = items
+    .map(
+      (item, index) => `
+        <article class="education-news-card">
+          <div class="education-news-meta">
+            <span>${escapeHtml(item.category || "教育资讯")}</span>
+            <time datetime="${escapeHtml(item.date)}">${escapeHtml(item.date)}</time>
+          </div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(item.summary)}</p>
+          <div class="education-news-focus">
+            <strong>家长关注：</strong>${escapeHtml(item.focus)}
+          </div>
+          <div class="education-news-footer">
+            <span>${String(index + 1).padStart(2, "0")} · ${escapeHtml(item.source)} / ${escapeHtml(item.sourcePage)}</span>
+            <a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">查看原文</a>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
 function getSchoolInfoByStage(stage) {
   return (state.schoolInfo?.schools || []).filter((school) => school.stage === stage);
 }
@@ -1592,10 +1634,13 @@ async function startApp() {
   state.data = await response.json();
   const schoolInfoResponse = await fetch(`./data/school-info-2026.json?v=${Date.now()}`, { cache: "no-store" });
   state.schoolInfo = await schoolInfoResponse.json();
+  const educationNewsResponse = await fetch(`./data/education-news.json?v=${Date.now()}`, { cache: "no-store" });
+  state.educationNews = await educationNewsResponse.json();
   document.querySelector("#dataStatus").textContent = "2026计划与2025参考数据已加载";
   renderMetrics();
   renderSourceOverview();
   renderDataSources();
+  renderEducationNews();
   renderSchoolTable();
   renderSchoolDirectories();
   updateAutoRankInputs();
