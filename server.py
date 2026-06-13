@@ -746,6 +746,18 @@ def handle_me(handler: BaseHTTPRequestHandler) -> None:
         json_response(handler, 200, {"ok": True, "user": user_payload(user)})
 
 
+def handle_health(handler: BaseHTTPRequestHandler) -> None:
+    json_response(
+        handler,
+        200,
+        {
+            "ok": True,
+            "databaseBackend": DB_BACKEND,
+            "hasDatabaseUrl": bool(DATABASE_URL),
+        },
+    )
+
+
 def int_or_none(value) -> int | None:
     try:
         if value in ("", None):
@@ -1148,6 +1160,9 @@ def handle_export_calculator_submissions(handler: BaseHTTPRequestHandler) -> Non
 class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/health":
+            handle_health(self)
+            return
         if parsed.path == "/api/auth/me":
             handle_me(self)
             return
@@ -1216,12 +1231,12 @@ def main() -> None:
     init_db()
     httpd = ThreadingHTTPServer((HOST, PORT), AppHandler)
     display_host = "localhost" if HOST in {"0.0.0.0", "::"} else HOST
-    print(f"服务已启动：http://{display_host}:{PORT}/")
-    print(f"监听地址：{HOST}:{PORT}")
+    print(f"服务已启动：http://{display_host}:{PORT}/", flush=True)
+    print(f"监听地址：{HOST}:{PORT}", flush=True)
     if DB_BACKEND == "postgres":
-        print("数据库模式：PostgreSQL")
+        print("数据库模式：PostgreSQL", flush=True)
     else:
-        print(f"数据库模式：SQLite，位置：{DB_PATH}")
+        print(f"数据库模式：SQLite，位置：{DB_PATH}", flush=True)
     httpd.serve_forever()
 
 

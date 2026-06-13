@@ -8,5 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV HOST=0.0.0.0
+ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "server.py"]
+CMD ["python", "-u", "server.py"]
