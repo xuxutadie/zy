@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f8fafc" />
     <title>后台管理 - 贵阳教育导航</title>
-    <link rel="stylesheet" href="./admin.css?v=20260611-admin-unified-theme" />
+    <link rel="stylesheet" href="./admin.css?v=20260613-help-community" />
   </head>
   <body>
     <main class="admin-shell">
@@ -17,6 +17,7 @@
         </div>
         <nav>
           <a class="active" href="/admin">用户测算表单</a>
+          <a href="#helpReviewPanel">互助回复审核</a>
           <a href="/">返回操作台</a>
         </nav>
       </aside>
@@ -108,7 +109,35 @@
             <div><span>提交记录</span><strong id="totalCount">0</strong></div>
             <div><span>今日提交</span><strong id="todayCount">0</strong></div>
             <div><span>平均分</span><strong id="averageScore">-</strong></div>
+            <div><span>待审回复</span><strong id="pendingReplyCount">0</strong></div>
           </div>
+
+          <section class="admin-card" id="helpReviewPanel">
+            <div class="admin-card-head">
+              <div>
+                <p class="eyebrow">Help Reply Review</p>
+                <h3>互助回复审核</h3>
+              </div>
+              <button class="table-action" id="refreshHelpRepliesButton" type="button">刷新回复</button>
+            </div>
+            <div class="admin-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>提交时间</th>
+                    <th>手机号</th>
+                    <th>求助标题</th>
+                    <th>回复内容</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="helpReplyRows">
+                  <tr><td colspan="6">暂无待审核回复</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           <section class="admin-card">
             <div class="admin-card-head">
@@ -171,6 +200,6 @@
         </div>
       </form>
     </dialog>
-    <script src="./admin.js?v=20260606-admin-crm"></script>
+    <script src="./admin.js?v=20260613-help-community"></script>
   </body>
 </html>

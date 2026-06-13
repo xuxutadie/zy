@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17172f" />
     <title>贵阳教育导航</title>
-    <link rel="stylesheet" href="./styles.css?v=20260613-competition-events" />
+    <link rel="stylesheet" href="./styles.css?v=20260613-help-community" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">跳到主要内容</a>
@@ -41,6 +41,7 @@
           <a class="nav-primary" href="?page=education-news" data-page="education-news" data-short="资讯">教育资讯分享</a>
           <a class="nav-primary" href="?page=training-recommendations" data-page="training-recommendations" data-short="机构">培训机构推荐</a>
           <a class="nav-primary" href="?page=competition-insights" data-page="competition-insights" data-short="赛事">赛事信息解读</a>
+          <a class="nav-primary" href="?page=help-community" data-page="help-community" data-short="互助">互帮互助</a>
         </nav>
       </aside>
 
@@ -366,6 +367,78 @@
           <div id="competitionEventList" class="competition-events"></div>
         </section>
 
+        <section id="help-community" class="section panel content-page help-community-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Mutual Help</p>
+              <h2>互帮互助</h2>
+            </div>
+            <span id="helpPointSummary">积分加载中</span>
+          </div>
+          <div class="help-rules">
+            <div>
+              <strong>发帖求助</strong>
+              <span>注册用户可以公开或匿名发布升学、学校、课程、赛事等问题。</span>
+            </div>
+            <div>
+              <strong>回复审核</strong>
+              <span>回复需经管理员审核后展示，审核通过后回复者积分 +10。</span>
+            </div>
+            <div>
+              <strong>积分兑换</strong>
+              <span>1 积分 = 1 RMB，可兑换培训班补习折扣券；每个机构单次最多使用 200 积分。</span>
+            </div>
+          </div>
+          <div class="help-layout">
+            <form class="help-card help-post-form" id="helpPostForm">
+              <div>
+                <p class="eyebrow">Ask Question</p>
+                <h3>发布求助</h3>
+              </div>
+              <label>
+                <span>标题</span>
+                <input id="helpPostTitle" type="text" maxlength="80" placeholder="例如：683分三区一地怎么排序志愿？" />
+              </label>
+              <label>
+                <span>求助内容</span>
+                <textarea id="helpPostContent" rows="5" maxlength="1000" placeholder="写清楚分数、区域、目标学校或你遇到的问题，方便其他家长回复。"></textarea>
+              </label>
+              <label class="help-check"><input id="helpPostAnonymous" type="checkbox" /> 匿名发布</label>
+              <button type="submit">发布求助</button>
+              <p class="help-message" id="helpMessage">内容会进入互助广场，回复内容需要管理员审核。</p>
+            </form>
+
+            <aside class="help-card help-points">
+              <div>
+                <p class="eyebrow">Points</p>
+                <h3>我的积分</h3>
+              </div>
+              <strong id="helpPointBalance">0</strong>
+              <span>审核通过的有效回复可增加积分，积分可用于培训班补习折扣券。</span>
+              <form id="couponForm" class="coupon-form">
+                <label>
+                  <span>兑换机构</span>
+                  <input id="couponInstitution" type="text" maxlength="80" placeholder="填写机构名称" />
+                </label>
+                <label>
+                  <span>使用积分</span>
+                  <input id="couponPoints" type="number" min="1" max="200" value="100" />
+                </label>
+                <button type="submit">提交兑换申请</button>
+              </form>
+              <div class="redemption-list" id="redemptionList"></div>
+            </aside>
+          </div>
+          <div class="help-feed-head">
+            <div>
+              <p class="eyebrow">Community Feed</p>
+              <h3>最新求助</h3>
+            </div>
+            <button class="secondary-action" id="refreshHelpButton" type="button">刷新</button>
+          </div>
+          <div id="helpPostList" class="help-post-list"></div>
+        </section>
+
         <section id="data" class="section data-grid" data-route hidden>
           <div class="panel">
             <div class="panel-title">
@@ -396,6 +469,6 @@
         </section>
       </main>
     </div>
-    <script src="./app.js?v=20260613-competition-events"></script>
+    <script src="./app.js?v=20260613-help-community"></script>
   </body>
 </html>

@@ -4,6 +4,7 @@ const state = {
   user: null,
   items: [],
   activeItem: null,
+  helpReplies: [],
 };
 
 function getAuthToken() {
@@ -43,6 +44,15 @@ function maskPhone(phone) {
 function formatDateTime(timestamp) {
   if (!timestamp) return "未记录";
   return new Date(Number(timestamp) * 1000).toLocaleString("zh-CN", { hour12: false });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function followStatusCode(label) {
@@ -116,6 +126,7 @@ async function loginAdmin(event) {
     state.user = payload.user;
     setAdminVisible(true);
     await loadSubmissions();
+    await loadHelpReplies();
   } catch (error) {
     setMessage(error.message, "error");
   }
@@ -178,6 +189,65 @@ async function loadSubmissions() {
   state.total = payload.total ?? state.items.length;
   renderStats(state.items);
   renderRows(state.items);
+}
+
+function renderHelpReplies(items) {
+  const body = document.querySelector("#helpReplyRows");
+  const pendingNode = document.querySelector("#pendingReplyCount");
+  if (!body || !pendingNode) return;
+  pendingNode.textContent = String(state.pendingReplyCount || 0);
+  body.innerHTML = items.length
+    ? items
+        .map(
+          (item) => `
+            <tr>
+              <td>${formatDateTime(item.createdAt)}</td>
+              <td>${escapeHtml(item.maskedPhone || item.phone || "未记录")}</td>
+              <td>
+                <strong>${escapeHtml(item.postTitle)}</strong>
+                <span class="review-subtext">${escapeHtml(item.postContent)}</span>
+              </td>
+              <td>${escapeHtml(item.content)}</td>
+              <td><span class="status-badge">${escapeHtml(item.status)}</span></td>
+              <td>
+                <div class="table-actions">
+                  <button class="table-action approve-action" type="button" data-review-id="${item.id}" data-review-status="approved">通过</button>
+                  <button class="table-action danger-action" type="button" data-review-id="${item.id}" data-review-status="rejected">驳回</button>
+                </div>
+              </td>
+            </tr>
+          `,
+        )
+        .join("")
+    : `<tr><td colspan="6">暂无待审核回复</td></tr>`;
+  body.querySelectorAll("[data-review-id]").forEach((button) => {
+    button.addEventListener("click", () => reviewHelpReply(button.dataset.reviewId, button.dataset.reviewStatus));
+  });
+}
+
+async function loadHelpReplies() {
+  if (!isAdmin()) return;
+  const payload = await authFetch("/api/admin/help-replies?status=pending&limit=100");
+  state.helpReplies = payload.items || [];
+  state.pendingReplyCount = payload.pendingCount || 0;
+  renderHelpReplies(state.helpReplies);
+}
+
+async function reviewHelpReply(id, status) {
+  if (!id || !status) return;
+  const label = status === "approved" ? "通过" : "驳回";
+  const confirmed = window.confirm(`确认${label}这条互助回复？`);
+  if (!confirmed) return;
+  try {
+    const payload = await authFetch("/api/admin/help-reply/review", {
+      method: "POST",
+      body: JSON.stringify({ id, status }),
+    });
+    setMessage(payload.message || "审核状态已更新。");
+    await loadHelpReplies();
+  } catch (error) {
+    setMessage(error.message, "error");
+  }
 }
 
 function renderDetail(item) {
@@ -265,6 +335,7 @@ async function logout() {
   clearAuthToken();
   state.user = null;
   state.items = [];
+  state.helpReplies = [];
   setAdminVisible(false);
   setMessage("已退出后台。");
 }
@@ -285,11 +356,15 @@ async function init() {
   document.querySelector("#exportButton").addEventListener("click", exportCsv);
   document.querySelector("#logoutButton").addEventListener("click", logout);
   document.querySelector("#saveDetailButton").addEventListener("click", saveDetail);
+  document.querySelector("#refreshHelpRepliesButton").addEventListener("click", () => {
+    loadHelpReplies().catch((error) => setMessage(error.message, "error"));
+  });
 
   state.user = await loadCurrentUser();
   if (isAdmin()) {
     setAdminVisible(true);
     await loadSubmissions();
+    await loadHelpReplies();
   } else {
     setAdminVisible(false);
     if (state.user) setMessage("当前登录账号不是管理员，请使用管理员手机号登录。", "error");

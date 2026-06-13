@@ -3,6 +3,10 @@ const state = {
   schoolInfo: null,
   educationNews: null,
   competitionEvents: null,
+  helpPosts: [],
+  helpRules: null,
+  helpPointBalance: 0,
+  helpRedemptions: [],
   schoolInfoFilters: {},
   currentBand: "稳一稳",
   results: [],
@@ -22,6 +26,7 @@ const pageIds = [
   "education-news",
   "training-recommendations",
   "competition-insights",
+  "help-community",
   "data",
 ];
 const AUTH_TOKEN_KEY = "gyzk_auth_token";
@@ -117,6 +122,7 @@ function getAllowedPageIds() {
         "education-news",
         "training-recommendations",
         "competition-insights",
+        "help-community",
       ];
 }
 
@@ -1633,6 +1639,163 @@ function formatDateTime(timestamp) {
   return date.toLocaleString("zh-CN", { hour12: false });
 }
 
+function redemptionStatusLabel(status) {
+  return {
+    pending: "待核销",
+    approved: "已核销",
+    rejected: "已驳回",
+  }[status] || status || "待核销";
+}
+
+function setHelpMessage(message, type = "") {
+  const node = document.querySelector("#helpMessage");
+  if (!node) return;
+  node.textContent = message;
+  node.dataset.type = type;
+}
+
+function renderHelpCommunity() {
+  const balanceNode = document.querySelector("#helpPointBalance");
+  const summaryNode = document.querySelector("#helpPointSummary");
+  const listNode = document.querySelector("#helpPostList");
+  const redemptionNode = document.querySelector("#redemptionList");
+  if (!balanceNode || !summaryNode || !listNode || !redemptionNode) return;
+
+  balanceNode.textContent = String(state.helpPointBalance || 0);
+  summaryNode.textContent = `当前可用积分 ${state.helpPointBalance || 0}，审核通过回复 +10`;
+  redemptionNode.innerHTML = state.helpRedemptions.length
+    ? state.helpRedemptions
+        .map(
+          (item) => `
+            <div>
+              <strong>${escapeHtml(item.institutionName)}</strong>
+              <span>${escapeHtml(redemptionStatusLabel(item.status))} · ${escapeHtml(item.points)} 积分 · ${escapeHtml(formatDateTime(item.createdAt))}</span>
+            </div>
+          `,
+        )
+        .join("")
+    : `<div><span>暂无兑换申请。</span></div>`;
+
+  listNode.innerHTML = state.helpPosts.length
+    ? state.helpPosts
+        .map(
+          (post) => `
+            <article class="help-post-card">
+              <div class="help-post-main">
+                <div>
+                  <span class="help-author">${escapeHtml(post.author)} · ${escapeHtml(formatDateTime(post.createdAt))}</span>
+                  <h3>${escapeHtml(post.title)}</h3>
+                </div>
+                <p>${escapeHtml(post.content)}</p>
+              </div>
+              <div class="help-replies">
+                ${
+                  post.replies?.length
+                    ? post.replies
+                        .map(
+                          (reply) => `
+                            <div class="help-reply">
+                              <strong>${escapeHtml(reply.author)}</strong>
+                              <span>${escapeHtml(formatDateTime(reply.createdAt))}</span>
+                              <p>${escapeHtml(reply.content)}</p>
+                            </div>
+                          `,
+                        )
+                        .join("")
+                    : `<div class="help-reply empty-reply">暂无已审核回复。</div>`
+                }
+              </div>
+              <form class="help-reply-form" data-post-id="${escapeHtml(post.id)}">
+                <textarea rows="2" maxlength="1000" placeholder="写下你的建议，审核通过后展示并增加 10 积分。"></textarea>
+                <label><input type="checkbox" name="anonymous" /> 匿名回复</label>
+                <button type="submit">提交回复</button>
+              </form>
+            </article>
+          `,
+        )
+        .join("")
+    : `<div class="empty-state"><strong>暂无求助帖</strong><span>可以发布第一个问题，邀请其他家长一起讨论。</span></div>`;
+
+  listNode.querySelectorAll(".help-reply-form").forEach((form) => {
+    form.addEventListener("submit", submitHelpReply);
+  });
+}
+
+async function loadHelpCommunity() {
+  if (!state.user) return;
+  try {
+    const payload = await authFetch("/api/help/posts?limit=80");
+    state.helpPosts = payload.items || [];
+    state.helpRules = payload.rules || null;
+    state.helpPointBalance = payload.pointBalance || 0;
+    state.helpRedemptions = payload.redemptions || [];
+    renderHelpCommunity();
+  } catch (error) {
+    setHelpMessage(error.message, "error");
+  }
+}
+
+async function submitHelpPost(event) {
+  event.preventDefault();
+  const title = document.querySelector("#helpPostTitle").value.trim();
+  const content = document.querySelector("#helpPostContent").value.trim();
+  const anonymous = document.querySelector("#helpPostAnonymous").checked;
+  setHelpMessage("正在发布求助...");
+  try {
+    const payload = await authFetch("/api/help/posts", {
+      method: "POST",
+      body: JSON.stringify({ title, content, anonymous }),
+    });
+    document.querySelector("#helpPostForm").reset();
+    setHelpMessage(payload.message || "求助已发布。", "success");
+    await loadHelpCommunity();
+  } catch (error) {
+    setHelpMessage(error.message, "error");
+  }
+}
+
+async function submitHelpReply(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const content = form.querySelector("textarea").value.trim();
+  const anonymous = form.querySelector('input[name="anonymous"]').checked;
+  setHelpMessage("正在提交回复...");
+  try {
+    const payload = await authFetch("/api/help/replies", {
+      method: "POST",
+      body: JSON.stringify({ postId: form.dataset.postId, content, anonymous }),
+    });
+    form.reset();
+    setHelpMessage(payload.message || "回复已提交。", "success");
+  } catch (error) {
+    setHelpMessage(error.message, "error");
+  }
+}
+
+async function submitCouponRedemption(event) {
+  event.preventDefault();
+  const institutionName = document.querySelector("#couponInstitution").value.trim();
+  const points = Number(document.querySelector("#couponPoints").value || 0);
+  setHelpMessage("正在提交兑换申请...");
+  try {
+    const payload = await authFetch("/api/help/coupon-redemptions", {
+      method: "POST",
+      body: JSON.stringify({ institutionName, points }),
+    });
+    document.querySelector("#couponForm").reset();
+    setHelpMessage(payload.message || "兑换申请已提交。", "success");
+    await loadHelpCommunity();
+  } catch (error) {
+    setHelpMessage(error.message, "error");
+  }
+}
+
+function setupHelpCommunity() {
+  document.querySelector("#helpPostForm")?.addEventListener("submit", submitHelpPost);
+  document.querySelector("#couponForm")?.addEventListener("submit", submitCouponRedemption);
+  document.querySelector("#refreshHelpButton")?.addEventListener("click", loadHelpCommunity);
+}
+
 function setupAdminSubmissionPanel() {
   if (!isAdmin()) return;
   if (document.querySelector("#submissionTable")) return;
@@ -1732,6 +1895,8 @@ async function startApp() {
   renderSchoolTable();
   renderSchoolDirectories();
   setupSchoolHeaderSearch();
+  setupHelpCommunity();
+  await loadHelpCommunity();
   updateAutoRankInputs();
   updateQuotaRankHint();
   renderEmptyResults();
