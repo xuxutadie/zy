@@ -73,3 +73,21 @@ web/data/2025-simulation.json
 ```
 
 该数据包包含 2025 官方录取线、招生计划、分数段、往年录取线、控制线、非计分规则、学校地址和公开来源索引等结构化数据。
+
+## Zeabur 短信验证码环境变量
+
+线上部署时 `server/sms_config.json` 不会提交到仓库，短信验证码必须通过 Zeabur 的服务环境变量启用。至少需要配置：
+
+```text
+SMS_ENABLED=true
+SMS_PROVIDER=spug
+SMS_TEMPLATE_ID=你的 Spug 短信模板编码
+SMS_BASE_URL=https://push.spug.cc/send
+SMS_TTL_MINUTES=10
+SMS_TIMEOUT_SECONDS=8
+```
+
+说明：
+- 如果 `SMS_ENABLED` 未配置为 `true`，系统会进入本地测试模式，并在注册页面显示测试验证码。
+- `SMS_TEMPLATE_ID` 填写 Spug 模板列表中的完整模板编码，不是短信平台登录账号。
+- 修改 Zeabur 环境变量后，需要重新部署或重启当前版本，运行日志中应继续显示数据库模式，同时注册验证码不再返回 `devCode`。

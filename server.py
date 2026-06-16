@@ -556,15 +556,48 @@ def load_sms_config() -> dict:
         "base_url": "https://push.spug.cc/send",
         "timeout_seconds": 8,
     }
-    if not SMS_CONFIG_PATH.exists():
-        return default_config
-    try:
-        with SMS_CONFIG_PATH.open("r", encoding="utf-8") as file:
-            custom_config = json.load(file)
-    except (OSError, json.JSONDecodeError):
-        return default_config
-    return {**default_config, **custom_config}
+    config = dict(default_config)
+    if SMS_CONFIG_PATH.exists():
+        try:
+            with SMS_CONFIG_PATH.open("r", encoding="utf-8") as file:
+                custom_config = json.load(file)
+            if isinstance(custom_config, dict):
+                config.update(custom_config)
+        except (OSError, json.JSONDecodeError):
+            pass
 
+    # 线上部署不会提交 sms_config.json，所以必须始终允许平台环境变量覆盖配置。
+    env_enabled = env_value("SMS_ENABLED", "SPUG_SMS_ENABLED")
+    if env_enabled:
+        config["enabled"] = env_enabled.strip().lower() in {"1", "true", "yes", "on", "enabled"}
+
+    env_provider = env_value("SMS_PROVIDER", "SPUG_SMS_PROVIDER")
+    if env_provider:
+        config["provider"] = env_provider
+
+    env_template_id = env_value("SMS_TEMPLATE_ID", "SPUG_SMS_TEMPLATE_ID")
+    if env_template_id:
+        config["template_id"] = env_template_id
+
+    env_base_url = env_value("SMS_BASE_URL", "SPUG_SMS_BASE_URL")
+    if env_base_url:
+        config["base_url"] = env_base_url
+
+    env_ttl_minutes = env_value("SMS_TTL_MINUTES", "SPUG_SMS_TTL_MINUTES")
+    if env_ttl_minutes:
+        try:
+            config["ttl_minutes"] = int(env_ttl_minutes)
+        except ValueError:
+            pass
+
+    env_timeout_seconds = env_value("SMS_TIMEOUT_SECONDS", "SPUG_SMS_TIMEOUT_SECONDS")
+    if env_timeout_seconds:
+        try:
+            config["timeout_seconds"] = int(env_timeout_seconds)
+        except ValueError:
+            pass
+
+    return config
 
 def parse_spug_sms_response(response_text: str) -> tuple[bool, str]:
     try:
