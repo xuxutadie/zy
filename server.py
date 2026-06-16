@@ -629,7 +629,7 @@ def send_sms_code(phone: str, code: str) -> tuple[bool, str]:
 
     url = f"{str(config.get('base_url')).rstrip('/')}/{template_id}"
     timeout = int(config.get("timeout_seconds") or 8)
-    body = json.dumps({"code": code, "targets": phone}, ensure_ascii=False).encode("utf-8")
+    body = json.dumps({"code": code, "to": phone}, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         url,
         data=body,

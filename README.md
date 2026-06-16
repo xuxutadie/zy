@@ -82,7 +82,7 @@ web/data/2025-simulation.json
 SMS_ENABLED=true
 SMS_PROVIDER=spug
 SMS_TEMPLATE_ID=你的 Spug 短信模板编码
-SMS_BASE_URL=https://push.spug.cc/send
+SMS_BASE_URL=https://push.spug.cc/sms
 SMS_TTL_MINUTES=10
 SMS_TIMEOUT_SECONDS=8
 ```
@@ -90,4 +90,5 @@ SMS_TIMEOUT_SECONDS=8
 说明：
 - 如果 `SMS_ENABLED` 未配置为 `true`，系统会进入本地测试模式，并在注册页面显示测试验证码。
 - `SMS_TEMPLATE_ID` 填写 Spug 模板列表中的完整模板编码，不是短信平台登录账号。
+- 短信专区模板使用 `/sms/{模板编码}` 接口，后端会用 `to` 参数传递手机号。
 - 修改 Zeabur 环境变量后，需要重新部署或重启当前版本，运行日志中应继续显示数据库模式，同时注册验证码不再返回 `devCode`。
