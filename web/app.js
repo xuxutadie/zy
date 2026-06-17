@@ -1086,10 +1086,42 @@ function renderCurrentYearData() {
         <div class="current-year-block">
           <h4>2026配额合计核对表</h4>
           <p class="quota-review-note">以下为根据合计行重新编辑的清晰表格，请先核对高中名称和合计名额；逐初中单元明细校验完成后再进入测算。</p>
-          <div class="quota-total-list quota-review-list">
-            ${quotaTotals
-              .map((item, index) => `<div><em>${String(index + 1).padStart(2, "0")}</em><span>${escapeHtml(item.school)}</span><strong>${Number(item.quota).toLocaleString()} 名</strong></div>`)
-              .join("") || "<p>配额合计待接入。</p>"}
+          <div class="quota-review-table-wrap">
+            <table class="quota-review-table">
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>高中学校</th>
+                  <th>配额名额</th>
+                  <th>核对状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  quotaTotals.length
+                    ? quotaTotals
+                        .map(
+                          (item, index) => `
+                            <tr>
+                              <td>${String(index + 1).padStart(2, "0")}</td>
+                              <td>${escapeHtml(item.school)}</td>
+                              <td>${Number(item.quota).toLocaleString()} 名</td>
+                              <td>待人工核对</td>
+                            </tr>
+                          `,
+                        )
+                        .join("")
+                    : `<tr><td colspan="4">配额合计待接入。</td></tr>`
+                }
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="2">合计</td>
+                  <td>${quotaTotals.reduce((sum, item) => sum + Number(item.quota || 0), 0).toLocaleString()} 名</td>
+                  <td>${quotaMeta ? `应等于官方合计 ${quotaMeta.grandTotal.toLocaleString()} 名` : "待核对"}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       </div>
@@ -1574,18 +1606,8 @@ function integrateQuotaAllocationData() {
   const quota = state.quotaAllocation;
   if (!quota?.meta || !state.data) return;
   const meta = quota.meta;
-  const sources = state.data.dataSources || [];
   const inventory = state.data.dataInventory || [];
-  if (!sources.some((source) => source.category === "2026配额分配表")) {
-    sources.push({
-      category: "2026配额分配表",
-      year: "2026",
-      title: meta.title,
-      url: "./data/quota-allocation-2026.json",
-      usage: `${meta.scope}初中学校配额生分配指标；用于核对配额总量和后续逐校配额测算`,
-      status: "官方PDF已接入，合计数据已整理为核对表",
-    });
-  }
+  state.data.dataSources = (state.data.dataSources || []).filter((source) => source.category !== "2026配额分配表");
   if (!inventory.some((item) => item.label === "2026配额分配表")) {
     inventory.push({
       label: "2026配额分配表",
@@ -1595,7 +1617,6 @@ function integrateQuotaAllocationData() {
       sourceFile: meta.sourceFile,
     });
   }
-  state.data.dataSources = sources;
   state.data.dataInventory = inventory;
 }
 
