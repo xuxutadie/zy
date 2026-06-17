@@ -1083,6 +1083,182 @@ body.auth-locked .app-shell {
   padding: 18px 18px 12px;
 }
 
+.current-year-data {
+  padding: 18px 18px 0;
+}
+
+.current-year-card {
+  border: 1px solid #cfe0ff;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fbff, #ffffff);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.current-year-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #dbeafe;
+  background: linear-gradient(135deg, #eef6ff, #fff7ed);
+}
+
+.current-year-head h3 {
+  margin: 4px 0 0;
+  color: var(--primary-dark);
+  font-size: 22px;
+}
+
+.current-year-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.current-year-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.current-year-grid article,
+.current-year-block {
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+}
+
+.current-year-grid article {
+  padding: 15px;
+}
+
+.current-year-grid strong {
+  display: block;
+  color: #1d4ed8;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.current-year-grid span {
+  display: block;
+  margin-top: 6px;
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.current-year-grid p,
+.quota-review-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.current-year-warning strong {
+  color: #b91c1c;
+}
+
+.current-year-subgrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+
+.current-year-block {
+  padding: 16px;
+}
+
+.current-year-block h4 {
+  margin: 0 0 12px;
+  color: var(--primary-dark);
+  font-size: 16px;
+}
+
+.current-year-list,
+.quota-total-list {
+  display: grid;
+  gap: 8px;
+}
+
+.current-year-list div,
+.quota-total-list div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #e5edf8;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.current-year-list span,
+.quota-total-list span {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.current-year-list strong,
+.quota-total-list strong {
+  color: #b91c1c;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.quota-review-list {
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.quota-review-list div {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.quota-review-list em {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: #1d4ed8;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.quota-range-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 18px 18px;
+}
+
+.quota-range-strip span {
+  padding: 7px 10px;
+  border: 1px solid #f3d19c;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .source-overview-head {
   padding: 14px;
   border: 1px solid #ddd1c2;
@@ -1243,6 +1419,56 @@ body.auth-locked .app-shell {
   max-height: 360px;
   overflow: auto;
   padding-right: 4px;
+}
+
+.current-source-group,
+.source-list-inner {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.current-source-group,
+.history-source-group {
+  grid-column: 1 / -1;
+}
+
+.history-source-group {
+  margin-top: 2px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.history-source-group summary,
+.history-inventory summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: #1d4ed8;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.source-list-inner {
+  padding: 0 10px 10px;
+}
+
+.history-inventory {
+  margin-top: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.history-inventory .source-year-grid {
+  padding: 0 10px 12px;
+}
+
+.muted-card {
+  opacity: 0.82;
+  background: #f9fafb;
 }
 
 .empty-state,

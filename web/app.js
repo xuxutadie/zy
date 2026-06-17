@@ -3,6 +3,7 @@ const state = {
   schoolInfo: null,
   educationNews: null,
   competitionEvents: null,
+  quotaAllocation: null,
   helpPosts: [],
   helpRules: null,
   helpPointBalance: 0,
@@ -30,6 +31,7 @@ const pageIds = [
   "data",
 ];
 const AUTH_TOKEN_KEY = "gyzk_auth_token";
+const OFFICIAL_2026_PLAN_TOTAL = 48029;
 const schoolStageRoutes = {
   小学: "primary-schools",
   初中: "junior-schools",
@@ -185,9 +187,9 @@ function setupAuthUi() {
             </div>
             <div class="auth-data-proof">
               <div><strong>117条</strong><span>2026普通高中及综合高中招生计划，覆盖公办、民办和中外合作项目班</span></div>
-              <div><strong>47929人</strong><span>2026已明确计划名额，另有1所学校官方表中显示待定</span></div>
+              <div><strong>48029人</strong><span>2026官方总计划名额；已结构化明确名额47929人，另有1所学校官方表中显示待定</span></div>
               <div><strong>597条</strong><span>2023-2024历史录取线，用于往年对比和学校热度参考</span></div>
-              <div><strong>8238条/行</strong><span>综合结构化数据，含计划、控制线、规则、地址和来源索引</span></div>
+              <div><strong>12965条/行</strong><span>综合结构化数据，含计划、控制线、规则、地址、配额合计和来源索引</span></div>
             </div>
           </aside>
           <div class="auth-card">
@@ -988,16 +990,27 @@ function renderMetrics() {
   const schoolCount = new Set(state.data.schools.map((school) => school.school)).size;
   const plan2026Rows = state.data.admissionPlan2026?.length || 0;
   const plan2026Total = (state.data.admissionPlan2026 || []).reduce((sum, row) => sum + (Number(row["招生人数"]) || Number(row.count) || 0), 0);
+  const quotaMeta = state.quotaAllocation?.meta;
   const planCount = state.data.schools.filter((school) => school.planReferenceYear === 2026 && school.planTotal > 0).length;
   const scoreRows = state.data.scoreDistribution.length;
   const historyCount = state.data.schools.reduce((sum, school) => sum + school.history.length, 0);
   const metrics = [
-    ["2026招生计划", plan2026Rows, `已接入明确名额 ${plan2026Total.toLocaleString()} 人，另含1条待定记录`],
-    ["2026计划已关联", planCount, `已匹配到 ${planCount} 条2025录取线记录，作为今年计划参考`],
-    ["2025年录取信息", admissionCount, `已结构化约 ${schoolCount} 所学校录取结果，仍作为录取线模拟参考`],
-    ["2025位次换算行数", scoreRows, "来自全市一分一段表，用于分数与位次换算"],
-    ["2023-2024历史参考", historyCount, "已匹配到当前录取线数据的往年记录"],
-  ];
+    [
+      "2026招生计划",
+      plan2026Rows,
+      `官方总计划 ${OFFICIAL_2026_PLAN_TOTAL.toLocaleString()} 人；已结构化明确名额 ${plan2026Total.toLocaleString()} 人，另含1条待定记录`,
+    ],
+    quotaMeta
+      ? [
+          "2026配额分配",
+          quotaMeta.grandTotal,
+          `覆盖 ${quotaMeta.unitCount} 个初中单元、${quotaMeta.highSchoolCount} 所高中；已整理为清晰核对表`,
+        ]
+      : null,
+    ["2026计划已关联", planCount, `已匹配到 ${planCount} 条学校计划，用于查看今年招生规模`],
+    ["待补充今年位次", "待发布", "2026成绩分数段公布后，替换当前临时位次换算"],
+    ["历史参考已收纳", historyCount + admissionCount + scoreRows, "2025及以前录取线、分数段和历史记录仅作为临时参考"],
+  ].filter(Boolean);
   document.querySelector("#metrics").innerHTML = metrics
     .map(
       ([label, value, note]) => `
@@ -1009,6 +1022,84 @@ function renderMetrics() {
       `,
     )
     .join("");
+}
+
+function get2026PlanSummary() {
+  const rows = state.data.admissionPlan2026 || [];
+  const categoryMap = new Map();
+  rows.forEach((row) => {
+    const category = row.category || row["数据类别"] || "未分类";
+    const count = Number(row.count) || Number(row["招生人数"]) || 0;
+    categoryMap.set(category, (categoryMap.get(category) || 0) + count);
+  });
+  const knownTotal = rows.reduce((sum, row) => sum + (Number(row["招生人数"]) || Number(row.count) || 0), 0);
+  return {
+    rows,
+    knownTotal,
+    pendingTotal: Math.max(OFFICIAL_2026_PLAN_TOTAL - knownTotal, 0),
+    categories: [...categoryMap.entries()].map(([name, count]) => ({ name, count })),
+  };
+}
+
+function renderCurrentYearData() {
+  const container = document.querySelector("#currentYearData");
+  if (!container) return;
+  const plan = get2026PlanSummary();
+  const quotaMeta = state.quotaAllocation?.meta;
+  const quotaTotals = state.quotaAllocation?.totalsByHighSchool || [];
+  const quotaRanges = state.quotaAllocation?.pageRanges || [];
+  container.innerHTML = `
+    <section class="current-year-card">
+      <div class="current-year-head">
+        <div>
+          <p class="eyebrow">2026 Current Data</p>
+          <h3>今年已接入数据总览</h3>
+        </div>
+        <span class="current-year-status">今年数据优先展示</span>
+      </div>
+      <div class="current-year-grid">
+        <article>
+          <strong>${plan.rows.length.toLocaleString()} 条</strong>
+          <span>2026普通高中及综合高中招生计划</span>
+          <p>官方总计划 ${OFFICIAL_2026_PLAN_TOTAL.toLocaleString()} 人；已结构化明确名额 ${plan.knownTotal.toLocaleString()} 人，另有 ${plan.pendingTotal.toLocaleString()} 人/待定项需以后续官方明细核准。</p>
+        </article>
+        <article>
+          <strong>${quotaMeta ? quotaMeta.grandTotal.toLocaleString() : "待接入"} 个</strong>
+          <span>2026三区一地配额名额</span>
+          <p>${quotaMeta ? `覆盖 ${quotaMeta.unitCount} 个初中单元、${quotaMeta.highSchoolCount} 所高中，已整理为清晰核对表。` : "暂未读取到2026配额表。"}</p>
+        </article>
+        <article class="current-year-warning">
+          <strong>待发布</strong>
+          <span>2026分数段与录取结果</span>
+          <p>当前还不能完全脱离2025数据做正式填报测算；今年成绩分数段、控制线和录取结果发布后，应替换临时参考。</p>
+        </article>
+      </div>
+      <div class="current-year-subgrid">
+        <div class="current-year-block">
+          <h4>招生计划分类</h4>
+          <div class="current-year-list">
+            ${plan.categories
+              .map((item) => `<div><span>${escapeHtml(item.name)}</span><strong>${item.count.toLocaleString()} 人</strong></div>`)
+              .join("")}
+          </div>
+        </div>
+        <div class="current-year-block">
+          <h4>2026配额合计核对表</h4>
+          <p class="quota-review-note">以下为根据合计行重新编辑的清晰表格，请先核对高中名称和合计名额；逐初中单元明细校验完成后再进入测算。</p>
+          <div class="quota-total-list quota-review-list">
+            ${quotaTotals
+              .map((item, index) => `<div><em>${String(index + 1).padStart(2, "0")}</em><span>${escapeHtml(item.school)}</span><strong>${Number(item.quota).toLocaleString()} 名</strong></div>`)
+              .join("") || "<p>配额合计待接入。</p>"}
+          </div>
+        </div>
+      </div>
+      <div class="quota-range-strip">
+        ${quotaRanges
+          .map((page) => `<span>第 ${page.page} 页：${escapeHtml(page.range)}</span>`)
+          .join("")}
+      </div>
+    </section>
+  `;
 }
 
 function uniqueValues(values) {
@@ -1419,9 +1510,11 @@ function renderSourceOverview() {
     return;
   }
   const years = uniqueValues(sources.map((source) => source.year)).sort();
+  const currentYearInventory = inventory.filter((item) => String(item.label || "").includes("2026"));
+  const historyInventory = inventory.filter((item) => !String(item.label || "").includes("2026"));
   const totalInventoryRows = inventory.reduce((sum, item) => sum + Number(item.count || 0), 0);
-  const overviewCards = inventory.length
-    ? inventory
+  const overviewCards = currentYearInventory.length
+    ? currentYearInventory
     : years.map((year) => {
         const yearSources = sources.filter((source) => source.year === year);
         const categories = uniqueValues(yearSources.map((source) => source.category));
@@ -1436,8 +1529,8 @@ function renderSourceOverview() {
 
   document.querySelector("#sourceOverview").innerHTML = `
     <div class="source-overview-head">
-      <strong>已采集整理 ${sources.length} 项公开资料，结构化 ${totalInventoryRows || sources.length} 条/行数据</strong>
-      <span>覆盖 ${years.join("、")} 年度，包含政策规则、控制线、招生计划、学校录取线、分数段、区域位次、资格规则和学校地址等信息。</span>
+      <strong>今年数据已优先展示；历史参考已降级收纳</strong>
+      <span>当前共采集整理 ${sources.length} 项公开资料，结构化 ${totalInventoryRows || sources.length} 条/行数据。2026数据用于展示当年招生规模和配额总量；2025及以前数据只作为分数风险的临时参照。</span>
     </div>
     <div class="source-year-grid">
       ${overviewCards
@@ -1452,6 +1545,22 @@ function renderSourceOverview() {
         )
         .join("")}
     </div>
+    <details class="history-inventory">
+      <summary>查看历史参考数据数量</summary>
+      <div class="source-year-grid">
+        ${historyInventory
+          .map(
+            (item) => `
+              <article class="source-year-card muted-card">
+                <strong>${Number(item.count || 0).toLocaleString()} ${item.unit || "条"}</strong>
+                <span>${item.label}</span>
+                <p>${item.detail}${item.sourceFile ? ` 来源：${item.sourceFile}` : ""}</p>
+              </article>
+            `,
+          )
+          .join("")}
+      </div>
+    </details>
   `;
 }
 
@@ -1461,27 +1570,65 @@ function sourceStatusClass(status) {
   return "normal";
 }
 
+function integrateQuotaAllocationData() {
+  const quota = state.quotaAllocation;
+  if (!quota?.meta || !state.data) return;
+  const meta = quota.meta;
+  const sources = state.data.dataSources || [];
+  const inventory = state.data.dataInventory || [];
+  if (!sources.some((source) => source.category === "2026配额分配表")) {
+    sources.push({
+      category: "2026配额分配表",
+      year: "2026",
+      title: meta.title,
+      url: "./data/quota-allocation-2026.json",
+      usage: `${meta.scope}初中学校配额生分配指标；用于核对配额总量和后续逐校配额测算`,
+      status: "官方PDF已接入，合计数据已整理为核对表",
+    });
+  }
+  if (!inventory.some((item) => item.label === "2026配额分配表")) {
+    inventory.push({
+      label: "2026配额分配表",
+      count: meta.grandTotal,
+      unit: "个名额",
+      detail: `覆盖 ${meta.unitCount} 个初中单元、${meta.highSchoolCount} 所高中；当前展示清晰合计核对表。`,
+      sourceFile: meta.sourceFile,
+    });
+  }
+  state.data.dataSources = sources;
+  state.data.dataInventory = inventory;
+}
+
 function renderDataSources() {
   const sources = state.data.dataSources || [];
+  const currentSources = sources.filter((source) => String(source.year || "").includes("2026"));
+  const historySources = sources.filter((source) => !String(source.year || "").includes("2026"));
+  const renderSourceCard = (source) => `
+    <article class="source-card">
+      <div class="source-main">
+        <div class="source-head">
+          <span class="source-year">${source.year}</span>
+          <strong>${source.category}</strong>
+          <span class="source-status ${sourceStatusClass(source.status)}">${source.status}</span>
+        </div>
+        <p>${source.title}</p>
+        <span>${source.usage}</span>
+      </div>
+      <a href="${source.url}" target="_blank" rel="noopener noreferrer">查看来源</a>
+    </article>
+  `;
   document.querySelector("#sourceList").innerHTML = sources.length
-    ? sources
-        .map(
-          (source) => `
-            <article class="source-card">
-              <div class="source-main">
-                <div class="source-head">
-                  <span class="source-year">${source.year}</span>
-                  <strong>${source.category}</strong>
-                  <span class="source-status ${sourceStatusClass(source.status)}">${source.status}</span>
-                </div>
-                <p>${source.title}</p>
-                <span>${source.usage}</span>
-              </div>
-              <a href="${source.url}" target="_blank" rel="noopener noreferrer">查看来源</a>
-            </article>
-          `,
-        )
-        .join("")
+    ? `
+        <div class="current-source-group">
+          ${currentSources.map(renderSourceCard).join("") || `<div class="form-note">暂无2026来源。</div>`}
+        </div>
+        <details class="history-source-group">
+          <summary>展开查看2025及以前历史参考来源</summary>
+          <div class="source-list-inner">
+            ${historySources.map(renderSourceCard).join("")}
+          </div>
+        </details>
+      `
     : `<div class="form-note">暂无来源清单。</div>`;
 }
 
@@ -1558,6 +1705,7 @@ function renderResults(form) {
 }
 
 function renderQuotaSimulation(form) {
+  const quotaMeta = state.quotaAllocation?.meta;
   const quotaItems = getQuotaMockCandidates()
     .map((school) => {
       const quotaMock = calculateQuotaMock(school, form);
@@ -1576,8 +1724,8 @@ function renderQuotaSimulation(form) {
   document.querySelector("#quotaSummary").innerHTML = `
     <div><strong>毕业初中/单元</strong><span>${form.middleSchool || "未填写"}</span></div>
     <div><strong>配额资格排位</strong><span>${form.quotaRank || "未填写"}</span></div>
-    <div><strong>配额数据</strong><span>当前未导入高中到初中的配额分配表</span></div>
-    <div><strong>第二阶段</strong><span>导入本校配额名额后，再按有效排位竞争</span></div>
+    <div><strong>配额数据</strong><span>${quotaMeta ? `已接入2026配额表：${quotaMeta.unitCount}个单元、${quotaMeta.highSchoolCount}所高中、合计${quotaMeta.grandTotal}名额` : "当前未导入高中到初中的配额分配表"}</span></div>
+    <div><strong>第二阶段</strong><span>${quotaMeta ? "逐校矩阵校验完成后，再按本校名额和有效排位竞争" : "导入本校配额名额后，再按有效排位竞争"}</span></div>
   `;
 
   document.querySelector("#quotaList").innerHTML = form.hasQuota
@@ -1595,7 +1743,7 @@ function renderQuotaSimulation(form) {
                   <span>统招参考 ${formatPercent(school.unifiedChance)}</span>
                   <span>有效排位约 ${school.effectiveQuotaRank}</span>
                   <span>${formatPlanReference(school)}</span>
-                  <span>本校配额名额待导入</span>
+                  <span>${quotaMeta ? `全表合计${quotaMeta.grandTotal}名额` : "本校配额名额待导入"}</span>
                 </div>
                 <p class="quota-stage">${school.stageText}：${school.detailText}</p>
               </div>
@@ -1607,7 +1755,7 @@ function renderQuotaSimulation(form) {
           `,
         )
         .join("")
-      : `<div class="quota-empty">当前没有可展示的配额学校。原因是尚未导入“高中-初中配额分配表”，系统不能把只有统招计划的学校当作配额学校推荐。</div>`
+      : `<div class="quota-empty">${quotaMeta ? "2026配额分配表已整理为清晰合计核对表；逐校逐单元矩阵仍在校验中，校验完成前不把它用于概率推荐。" : "当前没有可展示的配额学校。原因是尚未导入“高中-初中配额分配表”，系统不能把只有统招计划的学校当作配额学校推荐。"}</div>`
     : `<div class="quota-empty">当前未勾选具备配额资格。勾选后可进行配额模拟。</div>`;
 }
 
@@ -1886,8 +2034,19 @@ async function startApp() {
   state.educationNews = await educationNewsResponse.json();
   const competitionEventsResponse = await fetch(`./data/competition-events-2026.json?v=${Date.now()}`, { cache: "no-store" });
   state.competitionEvents = await competitionEventsResponse.json();
-  document.querySelector("#dataStatus").textContent = "2026计划与2025参考数据已加载";
+  try {
+    const quotaAllocationResponse = await fetch(`./data/quota-allocation-2026.json?v=${Date.now()}`, { cache: "no-store" });
+    state.quotaAllocation = quotaAllocationResponse.ok ? await quotaAllocationResponse.json() : null;
+  } catch (error) {
+    console.warn("2026配额分配表加载失败", error);
+    state.quotaAllocation = null;
+  }
+  integrateQuotaAllocationData();
+  document.querySelector("#dataStatus").textContent = state.quotaAllocation
+    ? "2026计划、配额表与2025参考数据已加载"
+    : "2026计划与2025参考数据已加载";
   renderMetrics();
+  renderCurrentYearData();
   renderSourceOverview();
   renderDataSources();
   renderEducationNews();
