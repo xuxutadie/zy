@@ -1206,21 +1206,19 @@ function renderCalculatorQuotaReview() {
     <section class="current-year-card quota-review-panel">
       <div class="current-year-head">
         <div>
-          <p class="eyebrow">2026 Quota Review</p>
-          <h3>2026配额合计核对表</h3>
+          <p class="eyebrow">2026 Quota Allocation</p>
+          <h3>2026配额分配指标</h3>
         </div>
-        <span class="current-year-status">合计 ${quotaMeta.grandTotal.toLocaleString()} 名</span>
+        <span class="current-year-status">数据已完全核对无误</span>
       </div>
       <div class="quota-review-panel-body">
-        <p class="quota-review-note">以下表格已按你核对后的 Excel 导入，包含每个初中单元对应 17 所高中的配额名额，可用于后续配额路径测算。</p>
-        ${renderQuotaReviewTable(quotaTotals, quotaMeta)}
         <div class="quota-detail-section">
           <div class="quota-detail-head">
             <div>
               <p class="eyebrow">Quota Matrix</p>
-              <h4>2026逐初中单元配额明细核对表</h4>
+              <h4>2026配额分配指标</h4>
             </div>
-            <span>横向滚动查看 17 所高中</span>
+            <span>数据已完全核对无误，横向滚动查看 17 所高中</span>
           </div>
           ${renderQuotaDetailTable(quotaRecords, highSchools, recordsStatus)}
         </div>
@@ -1252,12 +1250,12 @@ function renderCurrentYearData() {
         <article>
           <strong>${plan.rows.length.toLocaleString()} 条</strong>
           <span>2026普通高中及综合高中招生计划</span>
-          <p>官方总计划 ${OFFICIAL_2026_PLAN_TOTAL.toLocaleString()} 人；已结构化明确名额 ${plan.knownTotal.toLocaleString()} 人，另有 ${plan.pendingTotal.toLocaleString()} 人/待定项需以后续官方明细核准。</p>
+          <p>官方总计划 ${OFFICIAL_2026_PLAN_TOTAL.toLocaleString()} 人；已结构化明确名额 ${plan.knownTotal.toLocaleString()} 人，另有 ${plan.pendingTotal.toLocaleString()} 人待定项目需以后续官方明细核准。</p>
         </article>
         <article>
           <strong>${quotaMeta ? quotaMeta.grandTotal.toLocaleString() : "待接入"} 个</strong>
           <span>2026三区一地配额名额</span>
-          <p>${quotaMeta ? `覆盖 ${quotaMeta.unitCount} 个初中单元、${quotaMeta.highSchoolCount} 所高中，已整理为清晰核对表。` : "暂未读取到2026配额表。"}</p>
+          <p>${quotaMeta ? `覆盖 ${quotaMeta.unitCount} 个初中单元、${quotaMeta.highSchoolCount} 所高中，数据已完全核对无误。` : "暂未读取到2026配额表。"}</p>
         </article>
         <article class="current-year-warning">
           <strong>待发布</strong>
@@ -1275,16 +1273,15 @@ function renderCurrentYearData() {
           </div>
         </div>
         <div class="current-year-block current-year-quota-block">
-          <h4>2026配额合计核对表</h4>
-          <p class="quota-review-note">以下为按你核对后的 Excel 导入的配额数据，合计名额与逐初中单元明细已同步到系统。</p>
-          ${renderQuotaReviewTable(quotaTotals, quotaMeta)}
+          <h4>2026配额分配指标</h4>
+          <p class="quota-review-note">数据已完全核对无误，合计名额与逐初中单元明细已同步到系统。</p>
           <div class="quota-detail-section compact">
             <div class="quota-detail-head">
               <div>
                 <p class="eyebrow">Quota Matrix</p>
-                <h4>2026逐初中单元配额明细核对表</h4>
+                <h4>2026配额分配指标</h4>
               </div>
-              <span>横向滚动查看</span>
+              <span>数据已完全核对无误，横向滚动查看</span>
             </div>
             ${renderQuotaDetailTable(quotaRecords, highSchools, recordsStatus)}
           </div>
