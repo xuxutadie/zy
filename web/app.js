@@ -16,8 +16,10 @@ const state = {
   appReady: false,
 };
 
+const HOME_PAGE_ID = "home";
 const bandOrder = ["冲一冲", "稳一稳", "保一保", "谨慎填报"];
 const pageIds = [
+  HOME_PAGE_ID,
   "calculator",
   "dashboard",
   "schools",
@@ -115,6 +117,7 @@ function getAllowedPageIds() {
   return isAdmin()
     ? pageIds
     : [
+        HOME_PAGE_ID,
         "calculator",
         "dashboard",
         "schools",
@@ -302,6 +305,7 @@ async function registerWithPhone(event) {
     setAuthToken(payload.token);
     state.user = payload.user;
     setAuthMessage("注册成功，正在进入操作台。", "success");
+    window.history.replaceState({ page: HOME_PAGE_ID }, "", "?page=home");
     await startApp();
   } catch (error) {
     setAuthMessage(error.message, "error");
@@ -323,6 +327,7 @@ async function loginWithPassword(event) {
     setAuthToken(payload.token);
     state.user = payload.user;
     setAuthMessage("登录成功，正在进入操作台。", "success");
+    window.history.replaceState({ page: HOME_PAGE_ID }, "", "?page=home");
     await startApp();
   } catch (error) {
     setAuthMessage(error.message, "error");
@@ -388,7 +393,7 @@ function setupAccountPanel() {
       document.body.classList.remove("sidebar-collapsed");
       localStorage.setItem("gyedu.sidebarCollapsed", "false");
       document.querySelector("#sidebarCollapseControl")?.setAttribute("aria-expanded", "true");
-      document.querySelector("#sidebarCollapseControl")?.setAttribute("aria-label", "折叠侧边栏");
+      document.querySelector("#sidebarCollapseControl")?.setAttribute("aria-label", "进入首页");
     }
     const nextExpanded = panel.dataset.expanded !== "true";
     panel.dataset.expanded = nextExpanded ? "true" : "false";
@@ -411,15 +416,54 @@ async function logout() {
 function getRequestedPage() {
   const requested = new URLSearchParams(window.location.search).get("page");
   const allowedPages = getAllowedPageIds();
-  return allowedPages.includes(requested) ? requested : "calculator";
+  return allowedPages.includes(requested) ? requested : HOME_PAGE_ID;
+}
+
+const heroPresets = {
+  calculator: {
+    mode: "exam",
+    title: "贵阳新中考志愿填报模拟器",
+    copy: "聚焦2026招生计划、配额路径、位次换算和录取线参考，帮助家长先完成志愿方案模拟，再进入数据核对。",
+    stats: [
+      ["4324", "个2026配额名额"],
+      ["92", "个初中单元"],
+      ["1564", "个配额核对单元格"],
+    ],
+  },
+  default: {
+    mode: "home",
+    title: "贵阳教育导航",
+    copy: "整合中考志愿模拟、学校信息查询、录取数据参考和教育内容服务，帮助家长更清晰地做升学判断。",
+    stats: [
+      ["117", "条2026招生计划"],
+      ["48029", "个官方计划名额"],
+      ["7010", "行位次数据"],
+    ],
+  },
+};
+
+function updateHeroForPage(page) {
+  const topbar = document.querySelector(".topbar");
+  const title = document.querySelector("#heroTitle");
+  const copy = document.querySelector("#heroCopy");
+  const strip = document.querySelector("#heroDataStrip");
+  if (!topbar || !title || !copy || !strip) return;
+  const preset = page === "calculator" ? heroPresets.calculator : heroPresets.default;
+  topbar.dataset.hero = preset.mode;
+  title.textContent = preset.title;
+  copy.textContent = preset.copy;
+  strip.innerHTML = preset.stats
+    .map(([value, label]) => `<span><strong>${escapeHtml(value)}</strong> ${escapeHtml(label)}</span>`)
+    .join("");
 }
 
 function setActivePage(page, options = {}) {
   const allowedPages = getAllowedPageIds();
-  const activePage = allowedPages.includes(page) ? page : "calculator";
+  const activePage = allowedPages.includes(page) ? page : HOME_PAGE_ID;
   document.querySelectorAll("[data-route]").forEach((section) => {
     section.hidden = section.id !== activePage;
   });
+  document.querySelector("#sidebarCollapseControl")?.classList.toggle("active", activePage === HOME_PAGE_ID);
   document.querySelectorAll(".nav a[data-page]").forEach((link) => {
     const isActive = link.dataset.page === activePage;
     link.classList.toggle("active", isActive);
@@ -440,6 +484,7 @@ function setActivePage(page, options = {}) {
       }
     }
   });
+  updateHeroForPage(activePage);
 
   if (!options.skipHistory) {
     const nextUrl = new URL(window.location.href);
@@ -458,13 +503,16 @@ function initNavigation() {
     document.body.classList.toggle("sidebar-collapsed", collapsed);
     if (collapseControl) {
       collapseControl.setAttribute("aria-expanded", String(!collapsed));
-      collapseControl.setAttribute("aria-label", collapsed ? "展开侧边栏" : "折叠侧边栏");
+      collapseControl.setAttribute("aria-label", "进入首页");
     }
     localStorage.setItem("gyedu.sidebarCollapsed", collapsed ? "true" : "false");
   };
   setSidebarCollapsed(storedSidebarState === "true");
   collapseControl?.addEventListener("click", () => {
-    setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+    setActivePage(HOME_PAGE_ID);
+    if (document.body.classList.contains("sidebar-collapsed")) {
+      setSidebarCollapsed(false);
+    }
   });
 
   document.querySelectorAll(".nav a[data-page]").forEach((link) => {
@@ -1041,6 +1089,146 @@ function get2026PlanSummary() {
   };
 }
 
+function renderQuotaReviewTable(quotaTotals, quotaMeta) {
+  const reviewStatus = quotaMeta?.status?.includes("导入") || quotaMeta?.status?.includes("核对") ? "已核对" : "待核对";
+  return `
+    <div class="quota-review-table-wrap">
+      <table class="quota-review-table">
+        <thead>
+          <tr>
+            <th>序号</th>
+            <th>高中学校</th>
+            <th>配额名额</th>
+            <th>核对状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            quotaTotals.length
+              ? quotaTotals
+                  .map(
+                    (item, index) => `
+                      <tr>
+                        <td>${String(index + 1).padStart(2, "0")}</td>
+                        <td>${escapeHtml(item.school)}</td>
+                        <td>${Number(item.quota).toLocaleString()} 名</td>
+                        <td>${reviewStatus}</td>
+                      </tr>
+                    `,
+                  )
+                  .join("")
+              : `<tr><td colspan="4">配额合计待接入。</td></tr>`
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2">合计</td>
+            <td>${quotaTotals.reduce((sum, item) => sum + Number(item.quota || 0), 0).toLocaleString()} 名</td>
+            <td>${quotaMeta ? `应等于官方合计 ${quotaMeta.grandTotal.toLocaleString()} 名` : "待核对"}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+}
+
+function renderQuotaDetailTable(records, highSchools, recordsStatus) {
+  if (!records?.length || !highSchools?.length) {
+    return `
+      <div class="quota-detail-empty">
+        <strong>逐初中单元明细待接入</strong>
+        <span>当前只有高中合计名额，尚未结构化到每个初中单元。</span>
+      </div>
+    `;
+  }
+  const shortSchoolName = (name) =>
+    String(name || "")
+      .replace("贵阳市", "")
+      .replace("贵州省", "省")
+      .replace("贵州师范大学", "贵师大")
+      .replace("北京师范大学", "北师大")
+      .replace("中央民族大学", "中央民大")
+      .replace("附属中学", "附中")
+      .replace("高级中学", "高中");
+  return `
+    <div class="quota-detail-summary">
+      <span>${records.length.toLocaleString()} 个初中单元</span>
+      <span>${(recordsStatus?.detailCellCount || records.length * highSchools.length).toLocaleString()} 个配额单元格</span>
+      <span>状态：${escapeHtml(recordsStatus?.status || "待人工核对")}</span>
+    </div>
+    <div class="quota-detail-table-wrap">
+      <table class="quota-detail-table">
+        <thead>
+          <tr>
+            <th class="sticky-col">初中单元</th>
+            <th class="school-col">毕业初中/单元</th>
+            ${highSchools.map((school) => `<th title="${escapeHtml(school)}">${escapeHtml(shortSchoolName(school))}</th>`).join("")}
+            <th>行合计</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${records
+            .map(
+              (record) => `
+                <tr>
+                  <td class="sticky-col">${escapeHtml(record.unit)}</td>
+                  <td class="school-col">${escapeHtml(record.juniorSchool)}</td>
+                  ${highSchools
+                    .map((school) => `<td>${Number(record.allocations?.[school] || 0)}</td>`)
+                    .join("")}
+                  <td>${Number(record.total || 0)}</td>
+                  <td><span class="${record.checkStatus === "已核对" ? "quota-status-done" : "quota-status-pending"}">${escapeHtml(record.checkStatus || "待核对")}</span></td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+    <p class="quota-review-note">${escapeHtml(recordsStatus?.note || "明细来自扫描件OCR结构化，建议逐行核对后再进入正式测算。")}</p>
+  `;
+}
+
+function renderCalculatorQuotaReview() {
+  const container = document.querySelector("#calculatorQuotaReview");
+  if (!container) return;
+  const quotaMeta = state.quotaAllocation?.meta;
+  const quotaTotals = state.quotaAllocation?.totalsByHighSchool || [];
+  const quotaRecords = state.quotaAllocation?.records || [];
+  const recordsStatus = state.quotaAllocation?.recordsStatus;
+  const highSchools = quotaTotals.map((item) => item.school);
+  if (!quotaMeta) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `
+    <section class="current-year-card quota-review-panel">
+      <div class="current-year-head">
+        <div>
+          <p class="eyebrow">2026 Quota Review</p>
+          <h3>2026配额合计核对表</h3>
+        </div>
+        <span class="current-year-status">合计 ${quotaMeta.grandTotal.toLocaleString()} 名</span>
+      </div>
+      <div class="quota-review-panel-body">
+        <p class="quota-review-note">以下表格已按你核对后的 Excel 导入，包含每个初中单元对应 17 所高中的配额名额，可用于后续配额路径测算。</p>
+        ${renderQuotaReviewTable(quotaTotals, quotaMeta)}
+        <div class="quota-detail-section">
+          <div class="quota-detail-head">
+            <div>
+              <p class="eyebrow">Quota Matrix</p>
+              <h4>2026逐初中单元配额明细核对表</h4>
+            </div>
+            <span>横向滚动查看 17 所高中</span>
+          </div>
+          ${renderQuotaDetailTable(quotaRecords, highSchools, recordsStatus)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderCurrentYearData() {
   const container = document.querySelector("#currentYearData");
   if (!container) return;
@@ -1048,6 +1236,9 @@ function renderCurrentYearData() {
   const quotaMeta = state.quotaAllocation?.meta;
   const quotaTotals = state.quotaAllocation?.totalsByHighSchool || [];
   const quotaRanges = state.quotaAllocation?.pageRanges || [];
+  const quotaRecords = state.quotaAllocation?.records || [];
+  const recordsStatus = state.quotaAllocation?.recordsStatus;
+  const highSchools = quotaTotals.map((item) => item.school);
   container.innerHTML = `
     <section class="current-year-card">
       <div class="current-year-head">
@@ -1075,7 +1266,7 @@ function renderCurrentYearData() {
         </article>
       </div>
       <div class="current-year-subgrid">
-        <div class="current-year-block">
+        <div class="current-year-block current-year-plan-block">
           <h4>招生计划分类</h4>
           <div class="current-year-list">
             ${plan.categories
@@ -1083,45 +1274,19 @@ function renderCurrentYearData() {
               .join("")}
           </div>
         </div>
-        <div class="current-year-block">
+        <div class="current-year-block current-year-quota-block">
           <h4>2026配额合计核对表</h4>
-          <p class="quota-review-note">以下为根据合计行重新编辑的清晰表格，请先核对高中名称和合计名额；逐初中单元明细校验完成后再进入测算。</p>
-          <div class="quota-review-table-wrap">
-            <table class="quota-review-table">
-              <thead>
-                <tr>
-                  <th>序号</th>
-                  <th>高中学校</th>
-                  <th>配额名额</th>
-                  <th>核对状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  quotaTotals.length
-                    ? quotaTotals
-                        .map(
-                          (item, index) => `
-                            <tr>
-                              <td>${String(index + 1).padStart(2, "0")}</td>
-                              <td>${escapeHtml(item.school)}</td>
-                              <td>${Number(item.quota).toLocaleString()} 名</td>
-                              <td>待人工核对</td>
-                            </tr>
-                          `,
-                        )
-                        .join("")
-                    : `<tr><td colspan="4">配额合计待接入。</td></tr>`
-                }
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colspan="2">合计</td>
-                  <td>${quotaTotals.reduce((sum, item) => sum + Number(item.quota || 0), 0).toLocaleString()} 名</td>
-                  <td>${quotaMeta ? `应等于官方合计 ${quotaMeta.grandTotal.toLocaleString()} 名` : "待核对"}</td>
-                </tr>
-              </tfoot>
-            </table>
+          <p class="quota-review-note">以下为按你核对后的 Excel 导入的配额数据，合计名额与逐初中单元明细已同步到系统。</p>
+          ${renderQuotaReviewTable(quotaTotals, quotaMeta)}
+          <div class="quota-detail-section compact">
+            <div class="quota-detail-head">
+              <div>
+                <p class="eyebrow">Quota Matrix</p>
+                <h4>2026逐初中单元配额明细核对表</h4>
+              </div>
+              <span>横向滚动查看</span>
+            </div>
+            ${renderQuotaDetailTable(quotaRecords, highSchools, recordsStatus)}
           </div>
         </div>
       </div>
@@ -2067,6 +2232,7 @@ async function startApp() {
     ? "2026计划、配额表与2025参考数据已加载"
     : "2026计划与2025参考数据已加载";
   renderMetrics();
+  renderCalculatorQuotaReview();
   renderCurrentYearData();
   renderSourceOverview();
   renderDataSources();

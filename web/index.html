@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17172f" />
     <title>贵阳教育导航</title>
-    <link rel="stylesheet" href="./styles.css?v=20260613-help-community" />
+    <link rel="stylesheet" href="./styles.css?v=20260618-hero-switch" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">跳到主要内容</a>
     <div class="app-shell">
       <aside class="sidebar">
-        <button class="brand" type="button" id="sidebarCollapseControl" aria-expanded="true" aria-label="折叠侧边栏">
+        <button class="brand active" type="button" id="sidebarCollapseControl" aria-expanded="true" aria-label="进入首页">
           <div>
             <strong>贵阳教育导航</strong>
             <span>升学规划数据平台</span>
@@ -20,7 +20,7 @@
         <nav class="nav">
           <div class="nav-group">
             <div class="nav-group-head">
-              <a class="nav-primary active" href="?page=calculator" data-page="calculator" data-short="志愿" aria-expanded="true" aria-current="page">中考志愿模拟</a>
+              <a class="nav-primary" href="?page=calculator" data-page="calculator" data-short="志愿" aria-expanded="true">中考志愿模拟</a>
             </div>
             <div class="subnav" id="examSubnav" aria-label="中考志愿模拟子项目">
               <a href="?page=dashboard" data-page="dashboard" data-short="依据">数据依据</a>
@@ -48,9 +48,9 @@
       <main class="workspace" id="mainContent">
         <header class="topbar">
           <div>
-            <h1>贵阳教育导航</h1>
-            <p class="topbar-copy">整合中考志愿模拟、学校信息查询、录取数据参考和教育内容服务，帮助家长更清晰地做升学判断。</p>
-            <div class="hero-data-strip" aria-label="平台数据概览">
+            <h1 id="heroTitle">贵阳教育导航</h1>
+            <p class="topbar-copy" id="heroCopy">整合中考志愿模拟、学校信息查询、录取数据参考和教育内容服务，帮助家长更清晰地做升学判断。</p>
+            <div class="hero-data-strip" id="heroDataStrip" aria-label="平台数据概览">
               <span><strong>117</strong> 条2026招生计划</span>
               <span><strong>48029</strong> 个官方计划名额</span>
               <span><strong>7010</strong> 行位次数据</span>
@@ -60,6 +60,7 @@
         </header>
 
         <section id="calculator" class="section calculator-layout" data-route>
+          <div class="calculator-quota-review" id="calculatorQuotaReview"></div>
           <form class="panel input-panel" id="calcForm">
             <div class="panel-title">
               <div>
