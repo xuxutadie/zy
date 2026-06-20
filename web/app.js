@@ -33,6 +33,11 @@ const pageIds = [
   "competition-insights",
   "help-community",
 ];
+const examPageIds = ["calculator", "dashboard", "schools"];
+const navPageGroups = {
+  dashboard: "calculator",
+  schools: "calculator",
+};
 const AUTH_TOKEN_KEY = "gyzk_auth_token";
 const OFFICIAL_2026_PLAN_TOTAL = 48029;
 const schoolStageRoutes = {
@@ -450,6 +455,46 @@ const heroPresets = {
       ["学校画像", "持续补充"],
     ],
   },
+  educationNews: {
+    mode: "education-news",
+    title: "教育资讯分享",
+    copy: "汇总升学政策、官方通知、教育动态和家长高频关注内容，帮助家庭快速获取可读、可用、可追踪的信息。",
+    stats: [
+      ["政策资讯", "持续更新"],
+      ["官方来源", "优先整理"],
+      ["家长可读", "快速筛选"],
+    ],
+  },
+  training: {
+    mode: "training",
+    title: "培训机构推荐",
+    copy: "按学段、课程方向、区域和服务特色整理培训机构信息，方便家长做课程筛选、机构比较和补习规划。",
+    stats: [
+      ["课程服务", "分类整理"],
+      ["机构画像", "持续补充"],
+      ["家长筛选", "便捷对比"],
+    ],
+  },
+  competition: {
+    mode: "competition",
+    title: "赛事信息解读",
+    copy: "围绕青少年赛事、报名节奏、参赛路径和成果展示进行拆解，帮助学生和家长理解赛事价值与准备重点。",
+    stats: [
+      ["赛事目录", "动态更新"],
+      ["参赛路径", "分步解读"],
+      ["成果展示", "持续沉淀"],
+    ],
+  },
+  help: {
+    mode: "help",
+    title: "互帮互助",
+    copy: "支持家长发布升学问题、查看审核回复、积累互助积分，并按规则兑换培训班补习折扣券。",
+    stats: [
+      ["回复审核", "内容可信"],
+      ["积分奖励", "鼓励分享"],
+      ["折扣兑换", "规则透明"],
+    ],
+  },
   default: {
     mode: "home",
     title: "贵阳教育导航",
@@ -462,13 +507,24 @@ const heroPresets = {
   },
 };
 
+const contentHeroPagePresetMap = {
+  "education-news": "educationNews",
+  "training-recommendations": "training",
+  "competition-insights": "competition",
+  "help-community": "help",
+};
+
 function updateHeroForPage(page) {
   const topbar = document.querySelector(".topbar");
   const title = document.querySelector("#heroTitle");
   const copy = document.querySelector("#heroCopy");
   const strip = document.querySelector("#heroDataStrip");
   if (!topbar || !title || !copy || !strip) return;
-  const preset = page === "calculator" ? heroPresets.calculator : schoolInfoPageIds.includes(page) ? heroPresets.school : heroPresets.default;
+  const preset = examPageIds.includes(page)
+    ? heroPresets.calculator
+    : schoolInfoPageIds.includes(page)
+      ? heroPresets.school
+      : heroPresets[contentHeroPagePresetMap[page]] || heroPresets.default;
   topbar.dataset.hero = preset.mode;
   title.textContent = preset.title;
   copy.textContent = preset.copy;
@@ -484,10 +540,11 @@ function setActivePage(page, options = {}) {
     section.hidden = section.id !== activePage;
   });
   document.querySelector("#sidebarCollapseControl")?.classList.toggle("active", activePage === HOME_PAGE_ID);
+  const activeNavPage = navPageGroups[activePage] || activePage;
   document.querySelectorAll('a[data-page]').forEach((link) => {
-    const isActive = link.dataset.page === activePage;
+    const isActive = link.dataset.page === activeNavPage || link.dataset.page === activePage;
     link.classList.toggle("active", isActive);
-    if (isActive) {
+    if (link.dataset.page === activePage) {
       link.setAttribute("aria-current", "page");
     } else {
       link.removeAttribute("aria-current");

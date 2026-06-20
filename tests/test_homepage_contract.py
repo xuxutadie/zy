@@ -51,7 +51,7 @@ class HomepageContractTests(unittest.TestCase):
         self.assertIn('group.dataset.collapsed = hasActiveChild ? "false" : "true";', APP_JS)
 
     def test_active_sidebar_buttons_have_distinct_color(self) -> None:
-        self.assertIn("styles.css?v=20260620-school-info-hero-v2", INDEX_HTML)
+        self.assertIn("styles.css?v=20260620-content-heroes", INDEX_HTML)
         self.assertIn(".brand.active {", STYLES_CSS)
         self.assertIn(".nav a.active {", STYLES_CSS)
         self.assertIn(".subnav a.active {", STYLES_CSS)
@@ -67,6 +67,15 @@ class HomepageContractTests(unittest.TestCase):
         self.assertIn('url("./assets/generated/exam-simulator-hero-v2.png") center right / cover no-repeat', exam_hero_match.group(0))
         self.assertNotIn("education-hero-wide.png", exam_hero_match.group(0))
         self.assertIn("education-hero-wide.png", home_hero_match.group(0))
+        self.assertIn('const examPageIds = ["calculator", "dashboard", "schools"];', APP_JS)
+        self.assertIn("examPageIds.includes(page)", APP_JS)
+
+    def test_exam_child_pages_keep_primary_button_and_hero_unified(self) -> None:
+        self.assertIn("const navPageGroups = {", APP_JS)
+        self.assertIn('dashboard: "calculator"', APP_JS)
+        self.assertIn('schools: "calculator"', APP_JS)
+        self.assertIn("const activeNavPage = navPageGroups[activePage] || activePage;", APP_JS)
+        self.assertIn("link.dataset.page === activeNavPage || link.dataset.page === activePage", APP_JS)
 
     def test_school_info_primary_navigation_opens_overview_not_high_school(self) -> None:
         self.assertIn('const SCHOOL_INFO_PAGE_ID = "school-info";', APP_JS)
@@ -89,6 +98,29 @@ class HomepageContractTests(unittest.TestCase):
         self.assertNotIn("rgba(13, 148, 136", school_hero_match.group(0))
         self.assertIn("mode: \"school\"", APP_JS)
         self.assertIn("schoolInfoPageIds.includes(page)", APP_JS)
+
+    def test_content_pages_use_dedicated_topic_hero_images(self) -> None:
+        expected_heroes = {
+            "education-news": "education-news-hero-v1.png",
+            "training": "training-recommendations-hero-v1.png",
+            "competition": "competition-insights-hero-v1.png",
+            "help": "help-community-hero-v1.png",
+        }
+
+        self.assertIn("const contentHeroPagePresetMap = {", APP_JS)
+        self.assertIn('"education-news": "educationNews"', APP_JS)
+        self.assertIn('"training-recommendations": "training"', APP_JS)
+        self.assertIn('"competition-insights": "competition"', APP_JS)
+        self.assertIn('"help-community": "help"', APP_JS)
+        self.assertIn("heroPresets[contentHeroPagePresetMap[page]]", APP_JS)
+        for mode, asset in expected_heroes.items():
+            hero_match = re.search(rf'\.topbar\[data-hero="{mode}"\]\s*\{{[\s\S]*?\n\}}', STYLES_CSS)
+
+            self.assertIsNotNone(hero_match)
+            self.assertIn(f'url("./assets/generated/{asset}") center right / cover no-repeat', hero_match.group(0))
+            self.assertNotIn("education-hero-wide.png", hero_match.group(0))
+            self.assertNotIn("exam-simulator-hero", hero_match.group(0))
+            self.assertNotIn("school-info-hero", hero_match.group(0))
 
     def test_home_cards_have_distinct_color_accents(self) -> None:
         for tone in ("exam", "school", "content", "help"):

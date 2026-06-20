@@ -3850,6 +3850,38 @@ body {
     var(--primary-dark);
 }
 
+.topbar[data-hero="education-news"] {
+  background:
+    linear-gradient(90deg, rgba(8, 20, 50, 0.88), rgba(30, 64, 175, 0.32) 48%, rgba(8, 20, 50, 0.1)),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.14), rgba(15, 23, 42, 0.14)),
+    url("./assets/generated/education-news-hero-v1.png") center right / cover no-repeat,
+    var(--primary-dark);
+}
+
+.topbar[data-hero="training"] {
+  background:
+    linear-gradient(90deg, rgba(8, 20, 50, 0.88), rgba(146, 64, 14, 0.34) 48%, rgba(8, 20, 50, 0.1)),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.14), rgba(15, 23, 42, 0.14)),
+    url("./assets/generated/training-recommendations-hero-v1.png") center right / cover no-repeat,
+    var(--primary-dark);
+}
+
+.topbar[data-hero="competition"] {
+  background:
+    linear-gradient(90deg, rgba(8, 20, 50, 0.9), rgba(180, 83, 9, 0.36) 48%, rgba(8, 20, 50, 0.12)),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.16), rgba(15, 23, 42, 0.16)),
+    url("./assets/generated/competition-insights-hero-v1.png") center right / cover no-repeat,
+    var(--primary-dark);
+}
+
+.topbar[data-hero="help"] {
+  background:
+    linear-gradient(90deg, rgba(8, 20, 50, 0.88), rgba(37, 99, 235, 0.28) 48%, rgba(8, 20, 50, 0.1)),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.12)),
+    url("./assets/generated/help-community-hero-v1.png") center right / cover no-repeat,
+    var(--primary-dark);
+}
+
 .topbar[data-hero="home"] {
   background:
     linear-gradient(90deg, rgba(15, 23, 42, 0.84), rgba(30, 64, 175, 0.48) 48%, rgba(15, 23, 42, 0.16)),
