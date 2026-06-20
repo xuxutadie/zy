@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17172f" />
     <title>贵阳教育导航</title>
-    <link rel="stylesheet" href="./styles.css?v=20260618-hero-switch" />
+    <link rel="stylesheet" href="./styles.css?v=20260620-school-info-hero-v2" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">跳到主要内容</a>
@@ -18,19 +18,18 @@
           </div>
         </button>
         <nav class="nav">
-          <div class="nav-group">
+          <div class="nav-group" data-collapsed="true">
             <div class="nav-group-head">
-              <a class="nav-primary" href="?page=calculator" data-page="calculator" data-short="志愿" aria-expanded="true">中考志愿模拟</a>
+              <a class="nav-primary" href="?page=calculator" data-page="calculator" data-short="志愿" aria-expanded="false">中考志愿模拟</a>
             </div>
             <div class="subnav" id="examSubnav" aria-label="中考志愿模拟子项目">
               <a href="?page=dashboard" data-page="dashboard" data-short="依据">数据依据</a>
               <a href="?page=schools" data-page="schools" data-short="录取">2025年高中录取线</a>
-              <a href="?page=data" data-page="data" data-short="数据">数据管理</a>
             </div>
           </div>
           <div class="nav-group" data-collapsed="true">
             <div class="nav-group-head">
-              <a class="nav-primary" href="?page=high-schools" data-page="high-schools" data-short="学校" aria-expanded="false">学校信息查询</a>
+              <a class="nav-primary" href="?page=school-info" data-page="school-info" data-short="学校" aria-expanded="false">学校信息查询</a>
             </div>
             <div class="subnav" id="schoolInfoSubnav" aria-label="学校信息查询子项目">
               <a href="?page=primary-schools" data-page="primary-schools" data-short="小学">小学</a>
@@ -49,7 +48,7 @@
         <header class="topbar">
           <div>
             <h1 id="heroTitle">贵阳教育导航</h1>
-            <p class="topbar-copy" id="heroCopy">整合中考志愿模拟、学校信息查询、录取数据参考和教育内容服务，帮助家长更清晰地做升学判断。</p>
+            <p class="topbar-copy" id="heroCopy">整合中考志愿模拟、学校信息查询、录取数据参考、教育资讯、培训机构、赛事解读和互助社区，帮助家长更清晰地做升学判断。</p>
             <div class="hero-data-strip" id="heroDataStrip" aria-label="平台数据概览">
               <span><strong>117</strong> 条2026招生计划</span>
               <span><strong>48029</strong> 个官方计划名额</span>
@@ -59,8 +58,31 @@
           <div class="status-pill" id="dataStatus" aria-live="polite">数据加载中</div>
         </header>
 
-        <section id="calculator" class="section calculator-layout" data-route>
-          <div class="calculator-quota-review" id="calculatorQuotaReview"></div>
+        <section id="home" class="section home-overview" data-route>
+          <div class="home-card home-card-wide">
+            <p class="eyebrow">Platform Overview</p>
+            <h2>从数据查询到升学决策的一站式导航</h2>
+            <p>平台把贵阳升学相关的公开数据、学校信息、政策资讯、培训资源、赛事内容和家长互助集中到一个入口，适合日常查询、课堂讲解、家长沟通和方案汇报。</p>
+          </div>
+          <a class="home-card home-link-card home-card-exam" href="?page=calculator" data-page="calculator">
+            <strong>中考志愿模拟</strong>
+            <span>结合分数、位次、配额资格和历史录取线，快速生成可解释的参考方案。</span>
+          </a>
+          <a class="home-card home-link-card home-card-school" href="?page=school-info" data-page="school-info">
+            <strong>学校信息查询</strong>
+            <span>按小学、初中、高中分层查看学校信息，辅助家庭做区域和学校对比。</span>
+          </a>
+          <a class="home-card home-link-card home-card-content" href="?page=education-news" data-page="education-news">
+            <strong>教育内容服务</strong>
+            <span>汇总教育资讯、培训机构、赛事解读和互助社区，方便持续跟进升学信息。</span>
+          </a>
+          <a class="home-card home-link-card home-card-help" href="?page=help-community" data-page="help-community">
+            <strong>互帮互助</strong>
+            <span>发布升学问题、查看家长回复、积累互助积分，并用于培训班补习折扣券兑换。</span>
+          </a>
+        </section>
+
+        <section id="calculator" class="section calculator-layout" data-route hidden>
           <form class="panel input-panel" id="calcForm">
             <div class="panel-title">
               <div>
@@ -288,6 +310,33 @@
           </div>
         </section>
 
+        <section id="school-info" class="section panel school-info-overview-page" data-route hidden>
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">School Directory</p>
+              <h2>学校信息查询</h2>
+            </div>
+          </div>
+          <div class="school-info-grid">
+            <a href="?page=primary-schools" data-page="primary-schools">
+              <strong>小学信息</strong>
+              <span>按区域、地址和公开资料查看小学基础信息，适合做片区和学校初筛。</span>
+            </a>
+            <a href="?page=junior-schools" data-page="junior-schools">
+              <strong>初中信息</strong>
+              <span>查看初中学校分布和基础资料，辅助家长理解升学路径和学校选择。</span>
+            </a>
+            <a href="?page=high-schools" data-page="high-schools">
+              <strong>高中信息</strong>
+              <span>查看高中学校画像，并可继续关联 2025 年录取线和 2026 年招生计划参考。</span>
+            </a>
+            <a href="?page=schools" data-page="schools">
+              <strong>2025年高中录取线</strong>
+              <span>需要查看往年录取参考时，可进入录取线页面进行检索和对比。</span>
+            </a>
+          </div>
+        </section>
+
         <section id="primary-schools" class="section panel school-info-page" data-route hidden>
           <div class="panel-title">
             <div>
@@ -328,7 +377,7 @@
             </label>
           </div>
           <div class="school-directory" data-stage="高中"></div>
-          <a class="inline-action" href="?page=schools">查看2025年高中录取线</a>
+          <a class="inline-action" href="?page=schools" data-page="schools">查看2025年高中录取线</a>
         </section>
 
         <section id="education-news" class="section panel content-page" data-route hidden>
@@ -441,36 +490,8 @@
           <div id="helpPostList" class="help-post-list"></div>
         </section>
 
-        <section id="data" class="section data-grid" data-route hidden>
-          <div class="panel">
-            <div class="panel-title">
-              <div>
-                <p class="eyebrow">Import Slots</p>
-                <h2>2026 已接入 / 待补充</h2>
-              </div>
-            </div>
-            <div class="import-slots">
-              <div><strong>招生计划明细</strong><span>普通高中、综合高中、公办、民办、中外合作项目班已接入</span></div>
-              <div><strong>初中配额分配表</strong><span>2026官方PDF已接入，合计4324个名额</span></div>
-              <div><strong>分数段统计</strong><span>成绩公布后换算位次</span></div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">
-              <div>
-                <p class="eyebrow">Review Queue</p>
-                <h2>复核队列</h2>
-              </div>
-            </div>
-            <div class="review-list">
-              <div><strong>2023-2025 录取线</strong><span>官方图片 OCR，重点复核学校名称</span></div>
-              <div><strong>2024 分数段</strong><span>OCR 原始结果已保留，暂不作为核心算法</span></div>
-              <div><strong>2026 招生计划</strong><span>已按官方图片结构化117条，含1条待定</span></div>
-            </div>
-          </div>
-        </section>
       </main>
     </div>
-    <script src="./app.js?v=20260613-help-community"></script>
+    <script src="./app.js?v=20260619-calculator-direct"></script>
   </body>
 </html>

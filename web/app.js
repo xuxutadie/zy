@@ -17,12 +17,14 @@ const state = {
 };
 
 const HOME_PAGE_ID = "home";
+const SCHOOL_INFO_PAGE_ID = "school-info";
 const bandOrder = ["冲一冲", "稳一稳", "保一保", "谨慎填报"];
 const pageIds = [
   HOME_PAGE_ID,
   "calculator",
   "dashboard",
   "schools",
+  SCHOOL_INFO_PAGE_ID,
   "primary-schools",
   "junior-schools",
   "high-schools",
@@ -30,7 +32,6 @@ const pageIds = [
   "training-recommendations",
   "competition-insights",
   "help-community",
-  "data",
 ];
 const AUTH_TOKEN_KEY = "gyzk_auth_token";
 const OFFICIAL_2026_PLAN_TOTAL = 48029;
@@ -39,6 +40,7 @@ const schoolStageRoutes = {
   初中: "junior-schools",
   高中: "high-schools",
 };
+const schoolInfoPageIds = [SCHOOL_INFO_PAGE_ID, ...Object.values(schoolStageRoutes)];
 const featuredSchoolDistricts = ["云岩区", "南明区", "观山湖区"];
 const featuredSchoolNames = {
   云岩区: {
@@ -121,6 +123,7 @@ function getAllowedPageIds() {
         "calculator",
         "dashboard",
         "schools",
+        SCHOOL_INFO_PAGE_ID,
         "primary-schools",
         "junior-schools",
         "high-schools",
@@ -274,6 +277,13 @@ function setAuthLoading(isLoading) {
   });
 }
 
+function enterHomeAfterAuth() {
+  window.history.replaceState({ page: HOME_PAGE_ID }, "", "?page=home");
+  if (state.appReady) {
+    setActivePage(HOME_PAGE_ID, { replace: true });
+  }
+}
+
 async function sendRegisterCode() {
   const phone = document.querySelector("#registerPhone").value.trim();
   setAuthLoading(true);
@@ -305,8 +315,8 @@ async function registerWithPhone(event) {
     setAuthToken(payload.token);
     state.user = payload.user;
     setAuthMessage("注册成功，正在进入操作台。", "success");
-    window.history.replaceState({ page: HOME_PAGE_ID }, "", "?page=home");
-    await startApp();
+    enterHomeAfterAuth();
+    await startApp(HOME_PAGE_ID);
   } catch (error) {
     setAuthMessage(error.message, "error");
   } finally {
@@ -327,8 +337,8 @@ async function loginWithPassword(event) {
     setAuthToken(payload.token);
     state.user = payload.user;
     setAuthMessage("登录成功，正在进入操作台。", "success");
-    window.history.replaceState({ page: HOME_PAGE_ID }, "", "?page=home");
-    await startApp();
+    enterHomeAfterAuth();
+    await startApp(HOME_PAGE_ID);
   } catch (error) {
     setAuthMessage(error.message, "error");
   } finally {
@@ -430,10 +440,20 @@ const heroPresets = {
       ["1564", "个配额核对单元格"],
     ],
   },
+  school: {
+    mode: "school",
+    title: "贵阳学校信息查询",
+    copy: "按小学、初中、高中分层查看学校信息，结合区域、地址、学校性质和公开资料，辅助家庭做学校筛选与对比。",
+    stats: [
+      ["3", "个学段入口"],
+      ["10+", "个区县维度"],
+      ["学校画像", "持续补充"],
+    ],
+  },
   default: {
     mode: "home",
     title: "贵阳教育导航",
-    copy: "整合中考志愿模拟、学校信息查询、录取数据参考和教育内容服务，帮助家长更清晰地做升学判断。",
+    copy: "整合中考志愿模拟、学校信息查询、录取数据参考、教育资讯、培训机构、赛事解读和互助社区，帮助家长更清晰地做升学判断。",
     stats: [
       ["117", "条2026招生计划"],
       ["48029", "个官方计划名额"],
@@ -448,7 +468,7 @@ function updateHeroForPage(page) {
   const copy = document.querySelector("#heroCopy");
   const strip = document.querySelector("#heroDataStrip");
   if (!topbar || !title || !copy || !strip) return;
-  const preset = page === "calculator" ? heroPresets.calculator : heroPresets.default;
+  const preset = page === "calculator" ? heroPresets.calculator : schoolInfoPageIds.includes(page) ? heroPresets.school : heroPresets.default;
   topbar.dataset.hero = preset.mode;
   title.textContent = preset.title;
   copy.textContent = preset.copy;
@@ -464,7 +484,7 @@ function setActivePage(page, options = {}) {
     section.hidden = section.id !== activePage;
   });
   document.querySelector("#sidebarCollapseControl")?.classList.toggle("active", activePage === HOME_PAGE_ID);
-  document.querySelectorAll(".nav a[data-page]").forEach((link) => {
+  document.querySelectorAll('a[data-page]').forEach((link) => {
     const isActive = link.dataset.page === activePage;
     link.classList.toggle("active", isActive);
     if (isActive) {
@@ -476,12 +496,10 @@ function setActivePage(page, options = {}) {
   document.querySelectorAll(".nav-group").forEach((group) => {
     const hasActiveChild = Boolean(group.querySelector(`a[data-page="${activePage}"]`));
     group.classList.toggle("active-group", hasActiveChild);
-    if (hasActiveChild) {
-      group.dataset.collapsed = "false";
-      const primary = group.querySelector(".nav-primary");
-      if (primary) {
-        primary.setAttribute("aria-expanded", "true");
-      }
+    group.dataset.collapsed = hasActiveChild ? "false" : "true";
+    const primary = group.querySelector(".nav-primary");
+    if (primary) {
+      primary.setAttribute("aria-expanded", String(hasActiveChild));
     }
   });
   updateHeroForPage(activePage);
@@ -496,7 +514,7 @@ function setActivePage(page, options = {}) {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 }
 
-function initNavigation() {
+function initNavigation(initialPage = getRequestedPage()) {
   const collapseControl = document.querySelector("#sidebarCollapseControl");
   const storedSidebarState = localStorage.getItem("gyedu.sidebarCollapsed");
   const setSidebarCollapsed = (collapsed) => {
@@ -515,16 +533,10 @@ function initNavigation() {
     }
   });
 
-  document.querySelectorAll(".nav a[data-page]").forEach((link) => {
+  document.querySelectorAll('a[data-page]').forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      const group = link.closest(".nav-group");
-      const nextGroupCollapsed = group && link.classList.contains("nav-primary") ? group.dataset.collapsed !== "true" : null;
       setActivePage(link.dataset.page);
-      if (group && link.classList.contains("nav-primary")) {
-        group.dataset.collapsed = nextGroupCollapsed ? "true" : "false";
-        link.setAttribute("aria-expanded", String(!nextGroupCollapsed));
-      }
       if (document.body.classList.contains("sidebar-collapsed")) {
         setSidebarCollapsed(false);
       }
@@ -533,7 +545,7 @@ function initNavigation() {
   window.addEventListener("popstate", () => {
     setActivePage(getRequestedPage(), { skipHistory: true });
   });
-  setActivePage(getRequestedPage(), { replace: true });
+  setActivePage(initialPage, { replace: true });
 }
 
 function clamp(value, min, max) {
@@ -1187,43 +1199,6 @@ function renderQuotaDetailTable(records, highSchools, recordsStatus) {
       </table>
     </div>
     <p class="quota-review-note">${escapeHtml(recordsStatus?.note || "明细来自扫描件OCR结构化，建议逐行核对后再进入正式测算。")}</p>
-  `;
-}
-
-function renderCalculatorQuotaReview() {
-  const container = document.querySelector("#calculatorQuotaReview");
-  if (!container) return;
-  const quotaMeta = state.quotaAllocation?.meta;
-  const quotaTotals = state.quotaAllocation?.totalsByHighSchool || [];
-  const quotaRecords = state.quotaAllocation?.records || [];
-  const recordsStatus = state.quotaAllocation?.recordsStatus;
-  const highSchools = quotaTotals.map((item) => item.school);
-  if (!quotaMeta) {
-    container.innerHTML = "";
-    return;
-  }
-  container.innerHTML = `
-    <section class="current-year-card quota-review-panel">
-      <div class="current-year-head">
-        <div>
-          <p class="eyebrow">2026 Quota Allocation</p>
-          <h3>2026配额分配指标</h3>
-        </div>
-        <span class="current-year-status">数据已完全核对无误</span>
-      </div>
-      <div class="quota-review-panel-body">
-        <div class="quota-detail-section">
-          <div class="quota-detail-head">
-            <div>
-              <p class="eyebrow">Quota Matrix</p>
-              <h4>2026配额分配指标</h4>
-            </div>
-            <span>数据已完全核对无误，横向滚动查看 17 所高中</span>
-          </div>
-          ${renderQuotaDetailTable(quotaRecords, highSchools, recordsStatus)}
-        </div>
-      </div>
-    </section>
   `;
 }
 
@@ -2201,14 +2176,14 @@ async function loadAdminSubmissions() {
   }
 }
 
-async function startApp() {
+async function startApp(initialPage = getRequestedPage()) {
   setupAccountPanel();
   updateAuthVisibility();
   if (state.appReady) {
-    setActivePage(getRequestedPage(), { replace: true });
+    setActivePage(initialPage, { replace: true });
     return;
   }
-  initNavigation();
+  initNavigation(initialPage);
   const response = await fetch(`./data/2025-simulation.json?v=${Date.now()}`, { cache: "no-store" });
   state.data = await response.json();
   const schoolInfoResponse = await fetch(`./data/school-info-2026.json?v=${Date.now()}`, { cache: "no-store" });
@@ -2229,7 +2204,6 @@ async function startApp() {
     ? "2026计划、配额表与2025参考数据已加载"
     : "2026计划与2025参考数据已加载";
   renderMetrics();
-  renderCalculatorQuotaReview();
   renderCurrentYearData();
   renderSourceOverview();
   renderDataSources();
@@ -2281,7 +2255,8 @@ async function init() {
   state.user = await loadCurrentUser();
   updateAuthVisibility();
   if (state.user) {
-    await startApp();
+    enterHomeAfterAuth();
+    await startApp(HOME_PAGE_ID);
   }
 }
 
