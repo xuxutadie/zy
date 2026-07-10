@@ -853,6 +853,25 @@ function normalizeControlRegion(region) {
   return value;
 }
 
+function isAdmissionTypeAvailableForRegion(school, region) {
+  const targetRegion = normalizeControlRegion(region);
+  const text = `${school.batch || ""} ${school.type || ""}`;
+  const regionPattern = "三区一地|云岩区|南明区|观山湖区|小河|花溪区|乌当区|白云区|清镇市|息烽县|修文县|开阳县|贵安新区";
+  const directRegionMatch = text.match(new RegExp(`面向(${regionPattern})招生`));
+  if (directRegionMatch) return targetRegion === normalizeControlRegion(directRegionMatch[1]);
+
+  const localUnifiedMatch = text.match(new RegExp(`(${regionPattern})统招生`));
+  if (localUnifiedMatch) return targetRegion === normalizeControlRegion(localUnifiedMatch[1]);
+
+  const namedNonLocalMatch = text.match(/(花溪|乌当|白云|清镇|息烽|修文|开阳|贵安)(?:区|市|县|新区)?面向非本区/);
+  if (namedNonLocalMatch) return targetRegion !== normalizeControlRegion(namedNonLocalMatch[1]);
+
+  const namedMainRegionMatch = text.match(/(花溪|乌当|白云|清镇|息烽|修文|开阳|贵安)(?:区|市|县|新区)?面向三区一地/);
+  if (namedMainRegionMatch) return targetRegion === "三区一地";
+
+  return true;
+}
+
 function getBatchControlLine(batch, region) {
   const text = String(batch || "");
   const lines = (state.data?.controlLines || []).filter((line) => Number(line.year) === 2026);
@@ -1190,6 +1209,7 @@ function runCalculation(options = {}) {
   const form = getFormValues();
   const results = state.data.schools
     .filter((school) => school.dataQuality !== "OCR待复核")
+    .filter((school) => isAdmissionTypeAvailableForRegion(school, form.region))
     .map((school) => {
       const chance = calculateChance(school, form);
       const controlLineInfo = getControlLineForSchool(school, form);
