@@ -229,6 +229,11 @@ class HomepageContractTests(unittest.TestCase):
         self.assertIn("function getLineRankForSchool(school, region = \"\")", APP_JS)
         self.assertIn("const lineRankInfo = getLineRankForSchool(school, form.region);", APP_JS)
 
+    def test_yali_high_school_name_is_not_misspelled(self) -> None:
+        school_names = {row["school"] for row in SIMULATION_DATA["schools"]}
+        self.assertNotIn("贵阳礼吉高级中学(贵阳市第九中学)", school_names)
+        self.assertIn("贵阳雅礼高级中学(贵阳市第九中学)", school_names)
+
     def test_2026_control_lines_are_entered_and_rendered(self) -> None:
         lines_2026 = [row for row in SIMULATION_DATA["controlLines"] if row["year"] == 2026]
 
