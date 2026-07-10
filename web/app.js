@@ -200,7 +200,7 @@ function setupAuthUi() {
               <div><strong>117条</strong><span>2026普通高中及综合高中招生计划，覆盖公办、民办和中外合作项目班</span></div>
               <div><strong>48029人</strong><span>2026官方总计划名额；已结构化明确名额47929人，另有1所学校官方表中显示待定</span></div>
               <div><strong>597条</strong><span>2023-2024历史录取线，用于往年对比和学校热度参考</span></div>
-              <div><strong>12965条/行</strong><span>综合结构化数据，含计划、控制线、规则、地址、配额合计和来源索引</span></div>
+              <div><strong>19975条/行</strong><span>综合结构化数据，含计划、控制线、一分一段表、规则、地址、配额合计和来源索引</span></div>
             </div>
           </aside>
           <div class="auth-card">
@@ -655,23 +655,37 @@ function estimateRankFromRows(score, rows) {
   };
 }
 
+function getActiveScoreDistribution() {
+  return state.data.scoreDistribution2026?.length ? state.data.scoreDistribution2026 : state.data.scoreDistribution || [];
+}
+
+function getActiveRegionScoreDistribution(region) {
+  const rows = state.data.regionScoreDistribution2026?.length
+    ? state.data.regionScoreDistribution2026
+    : state.data.regionScoreDistribution || [];
+  return region ? rows.filter((row) => row.region === region) : rows;
+}
+
+function getActiveScoreDistributionYear() {
+  return state.data.scoreDistribution2026?.length ? 2026 : 2025;
+}
+
 function getDistributionRank(score) {
-  return estimateRankFromRows(score, state.data.scoreDistribution).rank;
+  return estimateRankFromRows(score, getActiveScoreDistribution()).rank;
 }
 
 function getRegionDistributionRank(score, region) {
-  const rows = state.data.regionScoreDistribution || [];
-  const regionRows = rows.filter((row) => row.region === region);
-  return estimateRankFromRows(score, regionRows).rank;
+  return estimateRankFromRows(score, getActiveRegionScoreDistribution(region)).rank;
 }
 
 function getTopBucketNotice() {
-  const cityTop = estimateRankFromRows(750, state.data.scoreDistribution || []);
-  const mainRegionRows = (state.data.regionScoreDistribution || []).filter((row) => row.region === "三区一地");
+  const distributionYear = getActiveScoreDistributionYear();
+  const cityTop = estimateRankFromRows(750, getActiveScoreDistribution());
+  const mainRegionRows = getActiveRegionScoreDistribution("三区一地");
   const mainRegionTop = estimateRankFromRows(750, mainRegionRows);
   const cityText = cityTop.topCumulative ?? cityTop.rank ?? "暂无";
   const mainRegionText = mainRegionTop.topCumulative ?? mainRegionTop.rank ?? "暂无";
-  return `2025年全市700分以上累计 ${cityText} 人，三区一地累计 ${mainRegionText} 人；700分以上不再细分精确位次，实际以成绩页为准。`;
+  return `${distributionYear}年全市700分以上累计 ${cityText} 人，三区一地累计 ${mainRegionText} 人；700分以上不再细分精确位次，实际以成绩页为准。`;
 }
 
 function isTopBucketEstimate(estimate) {
@@ -682,8 +696,9 @@ function updateAutoRankInputs() {
   if (!state.data) return;
   const score = Number(document.querySelector("#scoreInput").value || 0);
   const region = document.querySelector("#regionInput").value;
-  const cityEstimate = estimateRankFromRows(score, state.data.scoreDistribution || []);
-  const regionRows = (state.data.regionScoreDistribution || []).filter((row) => row.region === region);
+  const distributionYear = getActiveScoreDistributionYear();
+  const cityEstimate = estimateRankFromRows(score, getActiveScoreDistribution());
+  const regionRows = getActiveRegionScoreDistribution(region);
   const areaEstimate = estimateRankFromRows(score, regionRows);
   const cityRank = cityEstimate.rank;
   const areaRank = areaEstimate.rank;
@@ -697,7 +712,7 @@ function updateAutoRankInputs() {
     cityRankHint.textContent =
       isTopBucketEstimate(cityEstimate)
         ? getTopBucketNotice()
-        : `已按2025全市分数段自动换算为约 ${cityRank} 名内。`;
+        : `已按${distributionYear}全市分数段自动换算为约 ${cityRank} 名内。`;
   } else {
     cityRankHint.textContent = "当前暂无可用全市分数段，需手动填写全市位次。";
   }
@@ -707,7 +722,7 @@ function updateAutoRankInputs() {
     areaRankHint.textContent =
       isTopBucketEstimate(areaEstimate)
         ? getTopBucketNotice()
-        : `已按 ${region} 2025 分数段自动换算为约 ${areaRank} 名内。`;
+        : `已按 ${region} ${distributionYear} 分数段自动换算为约 ${areaRank} 名内。`;
   } else {
     areaRankHint.textContent = "当前分数或区域暂无可用分数段，需手动填写区域位次。";
   }
@@ -745,6 +760,40 @@ function usesAreaRank(school) {
     text.includes("开阳") ||
     text.includes("贵安")
   );
+}
+
+function getOfficialLineRank(school) {
+  const rank = Number(school.lineRank || 0);
+  if (!rank) return null;
+  return {
+    rank,
+    region: school.rankRegion || "",
+    isOfficial: true,
+  };
+}
+
+function getEstimatedLineRank(school, region = "") {
+  const areaRankMode = usesAreaRank(school);
+  const rank = areaRankMode
+    ? getRegionDistributionRank(school.score, region || school.rankRegion)
+    : getDistributionRank(school.score);
+  return {
+    rank,
+    region: areaRankMode ? region || school.rankRegion || "" : "全市",
+    isOfficial: false,
+  };
+}
+
+function getLineRankForSchool(school, region = "") {
+  return getOfficialLineRank(school) || getEstimatedLineRank(school, region);
+}
+
+function shouldUseAreaRank(school, lineRankInfo) {
+  return usesAreaRank(school) || Boolean(lineRankInfo?.region && lineRankInfo.region !== "全市");
+}
+
+function getActiveRankForSchool(school, form, lineRankInfo) {
+  return shouldUseAreaRank(school, lineRankInfo) ? form.areaRank || form.estimatedAreaRank || form.rank : form.rank;
 }
 
 function getHistoryAverage(school) {
@@ -790,11 +839,78 @@ function isModelHighCandidate(school) {
   return text.includes("第一批") || text.includes("配额") || text.includes("省级示范");
 }
 
+function normalizeControlRegion(region) {
+  const value = String(region || "");
+  if (value.includes("三区一地")) return "三区一地";
+  if (value.includes("花溪")) return "花溪区";
+  if (value.includes("乌当")) return "乌当区";
+  if (value.includes("白云")) return "白云区";
+  if (value.includes("清镇")) return "清镇市";
+  if (value.includes("修文")) return "修文县";
+  if (value.includes("开阳")) return "开阳县";
+  if (value.includes("息烽")) return "息烽县";
+  if (value.includes("贵安")) return "贵安新区";
+  return value;
+}
+
+function getBatchControlLine(batch, region) {
+  const text = String(batch || "");
+  const lines = (state.data?.controlLines || []).filter((line) => Number(line.year) === 2026);
+  const normalizedRegion = normalizeControlRegion(region);
+  let matched = null;
+  let score = 0;
+  let label = "";
+
+  if (text.includes("3+4") || text.includes("中本贯通")) {
+    matched = lines.find((line) => String(line.note || "").includes("3+4"));
+    score = Number(matched?.other || 0);
+    label = "3+4贯通班";
+  } else if (text.includes("第三批")) {
+    matched = lines.find((line) => String(line.note || "").includes("第三批"));
+    score = Number(matched?.other || 0);
+    label = "第三批次";
+  } else if (text.includes("第二批")) {
+    matched = lines.find((line) => line.region === normalizedRegion);
+    score = Number(matched?.second || 0);
+    label = "第二批次";
+  } else if (text.includes("第一批") || text.includes("配额")) {
+    matched = lines.find((line) => line.region === normalizedRegion);
+    score = Number(matched?.first || 0);
+    label = "第一批次";
+  }
+
+  if (!matched || !score) return null;
+  return {
+    score,
+    label,
+    region: matched.region,
+    sourceStatus: matched.status || "",
+  };
+}
+
+function getControlLineForSchool(school, form) {
+  const batchText = `${school.batch} ${school.type}`;
+  const controlLine = getBatchControlLine(batchText, form.region);
+  if (!controlLine) return null;
+  const score = Number(form.score || 0);
+  return {
+    ...controlLine,
+    passed: score >= controlLine.score,
+    gap: Math.round(score - controlLine.score),
+  };
+}
+
+function applyControlLineGate(chance, controlLineInfo) {
+  if (!controlLineInfo || controlLineInfo.passed) return chance;
+  return Math.min(chance, 8);
+}
+
 function calculateChance(school, form) {
   const scoreDelta = form.score - school.score;
-  const lineRank = getDistributionRank(school.score);
-  const areaRankMode = usesAreaRank(school);
-  const activeRank = areaRankMode ? form.areaRank || form.estimatedAreaRank || form.rank : form.rank;
+  const lineRankInfo = getLineRankForSchool(school, form.region);
+  const lineRank = lineRankInfo?.rank;
+  const areaRankMode = shouldUseAreaRank(school, lineRankInfo);
+  const activeRank = getActiveRankForSchool(school, form, lineRankInfo);
   const rankScale = areaRankMode ? 80 : 140;
   const rankDelta = activeRank && lineRank ? lineRank - activeRank : 0;
   const rankAdjustment = activeRank && lineRank ? clamp(rankDelta / rankScale, -12, 14) : 0;
@@ -883,27 +999,33 @@ function calculateQuotaMock(school, form) {
   }
   const scoreDelta = form.score - school.score;
   const quotaRank = form.quotaRank || 999;
-  const unifiedChance = calculateChance(school, { ...form, hasQuota: false });
+  const controlLineInfo = getControlLineForSchool(school, form);
+  const unifiedRawChance = calculateChance(school, { ...form, hasQuota: false });
+  const unifiedChance = applyControlLineGate(unifiedRawChance, controlLineInfo);
   const releasedAhead = estimateUnifiedReleaseAhead(school, form, unifiedChance);
   const effectiveQuotaRank = Math.max(1, quotaRank - releasedAhead);
   const quotaRankAdjustment =
     effectiveQuotaRank <= 20 ? 18 : effectiveQuotaRank <= 50 ? 10 : effectiveQuotaRank <= 80 ? 4 : effectiveQuotaRank <= 120 ? -4 : -12;
-  const lineRank = usesAreaRank(school) ? getRegionDistributionRank(school.score, form.region) : getDistributionRank(school.score);
-  const activeRank = usesAreaRank(school) ? form.areaRank || form.estimatedAreaRank || form.rank : form.rank;
+  const lineRankInfo = getLineRankForSchool(school, form.region);
+  const lineRank = lineRankInfo?.rank;
+  const activeRank = getActiveRankForSchool(school, form, lineRankInfo);
   const rankAdjustment = lineRank && activeRank ? clamp((lineRank - activeRank) / 120, -8, 10) : 0;
   const subjectAdjustment = form.subjectEligibility.generalEligible ? (form.subjectEligibility.modelHighEligible ? 0 : -8) : -35;
   const quotaRaw = 42 + scoreDelta * 1.1 + quotaRankAdjustment + rankAdjustment + subjectAdjustment;
   const unifiedLikely = unifiedChance >= 78 && scoreDelta >= 0;
-  const quotaChance = unifiedLikely ? 1 : clamp(quotaRaw, 1, 88);
+  const quotaChance = applyControlLineGate(unifiedLikely ? 1 : clamp(quotaRaw, 1, 88), controlLineInfo);
   const stageText = unifiedLikely ? "第一阶段统招优先" : "第二阶段配额参考";
   const detailText =
-    unifiedLikely
-      ? "按2025线模拟，可能先被统招录取；统招优先项不进入配额竞争列表"
-      : `未明显锁定统招时，再看配额；本校前排可能统招释放约 ${releasedAhead} 位，有效排位约 ${effectiveQuotaRank}`;
+    controlLineInfo && !controlLineInfo.passed
+      ? `未达2026投档控制线：${controlLineInfo.region}${controlLineInfo.label}为 ${controlLineInfo.score} 分，当前低 ${Math.abs(controlLineInfo.gap)} 分，配额路径也不建议作为有效投档参考`
+      : unifiedLikely
+        ? "按2025线模拟，可能先被统招录取；统招优先项不进入配额竞争列表"
+        : `未明显锁定统招时，再看配额；本校前排可能统招释放约 ${releasedAhead} 位，有效排位约 ${effectiveQuotaRank}`;
 
   return {
     quotaChance,
     unifiedChance,
+    controlLineInfo,
     unifiedLikely,
     releasedAhead,
     effectiveQuotaRank,
@@ -932,13 +1054,14 @@ function formatPlanReference(school) {
   return `${year}计划约 ${school.planTotal} 人`;
 }
 
-function buildReason(school, form, chance) {
+function buildReason(school, form, chance, controlLineInfo) {
   const delta = Math.round(form.score - school.score);
-  const lineRank = getDistributionRank(school.score);
-  const regionLineRank = getRegionDistributionRank(school.score, form.region);
-  const rankMode = usesAreaRank(school) ? "区域位次优先" : "全市位次优先";
-  const rankText = lineRank
-    ? `2025线约对应全市累计位次 ${lineRank}${regionLineRank ? `、${form.region}累计位次 ${regionLineRank}` : ""}，本项按${rankMode}评估`
+  const lineRankInfo = getLineRankForSchool(school, form.region);
+  const rankMode = shouldUseAreaRank(school, lineRankInfo) ? "区域位次优先" : "全市位次优先";
+  const rankText = lineRankInfo?.rank
+    ? lineRankInfo.isOfficial
+      ? `2025官方最低${lineRankInfo.region || "区域"}位次 ${lineRankInfo.rank}，本项按${rankMode}评估`
+      : `2025线约对应${lineRankInfo.region || "全市"}累计位次 ${lineRankInfo.rank}，本项按${rankMode}评估`
     : "暂无可用位次换算";
   const planText = formatPlanReference(school);
   const historyText = school.history.length ? `已匹配 ${school.history.length} 条历史线` : "历史线匹配较少";
@@ -946,7 +1069,12 @@ function buildReason(school, form, chance) {
     ? `配额资格排位 ${form.quotaRank || "未填"}，需结合本校分配名额判断`
     : "非配额类志愿";
   const subjectText = buildSubjectReason(school, form);
-  return `比2025最低线${delta >= 0 ? "高" : "低"} ${Math.abs(delta)} 分，${rankText}，${planText}，${historyText}，${quotaText}，${subjectText}，风险标记为${riskLabel(chance)}。`;
+  const controlLineText = controlLineInfo
+    ? controlLineInfo.passed
+      ? `已达2026${controlLineInfo.region}${controlLineInfo.label}投档控制线 ${controlLineInfo.score} 分，高出 ${controlLineInfo.gap} 分`
+      : `未达2026投档控制线：${controlLineInfo.region}${controlLineInfo.label}为 ${controlLineInfo.score} 分，当前低 ${Math.abs(controlLineInfo.gap)} 分，本批次不建议作为有效投档志愿`
+    : "该批次暂无已接入的2026投档控制线，仍需人工核对";
+  return `${controlLineText}。比2025最低线${delta >= 0 ? "高" : "低"} ${Math.abs(delta)} 分，${rankText}，${planText}，${historyText}，${quotaText}，${subjectText}，风险标记为${riskLabel(chance)}。`;
 }
 
 function buildSubjectReason(school, form) {
@@ -1064,15 +1192,19 @@ function runCalculation(options = {}) {
     .filter((school) => school.dataQuality !== "OCR待复核")
     .map((school) => {
       const chance = calculateChance(school, form);
+      const controlLineInfo = getControlLineForSchool(school, form);
+      const gatedChance = applyControlLineGate(chance, controlLineInfo);
       const delta = form.score - school.score;
-      const band = classifyBand(chance, delta);
+      const band = controlLineInfo && !controlLineInfo.passed ? "谨慎填报" : classifyBand(gatedChance, delta);
       return {
         ...school,
-        chance,
+        chance: gatedChance,
+        rawChance: chance,
+        controlLineInfo,
         delta,
         band,
-        risk: riskLabel(chance),
-        reason: buildReason(school, form, chance),
+        risk: riskLabel(gatedChance),
+        reason: buildReason(school, form, gatedChance, controlLineInfo),
       };
     })
     .filter((school) => form.acceptPrivate || school.nature !== "民办")
@@ -1109,7 +1241,8 @@ function renderMetrics() {
   const plan2026Total = (state.data.admissionPlan2026 || []).reduce((sum, row) => sum + (Number(row["招生人数"]) || Number(row.count) || 0), 0);
   const quotaMeta = state.quotaAllocation?.meta;
   const planCount = state.data.schools.filter((school) => school.planReferenceYear === 2026 && school.planTotal > 0).length;
-  const scoreRows = state.data.scoreDistribution.length;
+  const scoreRows = getActiveScoreDistribution().length + getActiveRegionScoreDistribution().length;
+  const scoreDistributionYear = getActiveScoreDistributionYear();
   const historyCount = state.data.schools.reduce((sum, school) => sum + school.history.length, 0);
   const metrics = [
     [
@@ -1125,8 +1258,8 @@ function renderMetrics() {
         ]
       : null,
     ["2026计划已关联", planCount, `已匹配到 ${planCount} 条学校计划，用于查看今年招生规模`],
-    ["待补充今年位次", "待发布", "2026成绩分数段公布后，替换当前临时位次换算"],
-    ["历史参考已收纳", historyCount + admissionCount + scoreRows, "2025及以前录取线、分数段和历史记录仅作为临时参考"],
+    [`${scoreDistributionYear}一分一段表`, scoreRows, `${scoreDistributionYear} 分数段已用于全市位次和区域位次自动换算`],
+    ["历史参考已收纳", historyCount + admissionCount + state.data.scoreDistribution.length, "2025及以前录取线和历史记录仅作为录取线参考"],
   ].filter(Boolean);
   document.querySelector("#metrics").innerHTML = metrics
     .map(
@@ -1259,6 +1392,31 @@ function renderQuotaDetailTable(records, highSchools, recordsStatus) {
   `;
 }
 
+function renderControlLineRows(controlLines) {
+  if (!controlLines.length) {
+    return `
+      <tr>
+        <td colspan="4">2026录取控制线待接入。</td>
+      </tr>
+    `;
+  }
+  return controlLines
+    .map((line) => {
+      const first = Number(line.first || 0) > 0 ? `${Number(line.first)}分` : "不适用";
+      const second = Number(line.second || 0) > 0 ? `${Number(line.second)}分` : "不适用";
+      const other = line.other ? `${escapeHtml(line.other)}分` : escapeHtml(line.note || "");
+      return `
+        <tr>
+          <td>${escapeHtml(line.region)}</td>
+          <td>${first}</td>
+          <td>${second}</td>
+          <td>${other}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
 function renderCurrentYearData() {
   const container = document.querySelector("#currentYearData");
   if (!container) return;
@@ -1269,6 +1427,7 @@ function renderCurrentYearData() {
   const quotaRecords = state.quotaAllocation?.records || [];
   const recordsStatus = state.quotaAllocation?.recordsStatus;
   const highSchools = quotaTotals.map((item) => item.school);
+  const controlLines2026 = (state.data.controlLines || []).filter((line) => Number(line.year) === 2026);
   container.innerHTML = `
     <section class="current-year-card">
       <div class="current-year-head">
@@ -1289,13 +1448,32 @@ function renderCurrentYearData() {
           <span>2026三区一地配额名额</span>
           <p>${quotaMeta ? `覆盖 ${quotaMeta.unitCount} 个初中单元、${quotaMeta.highSchoolCount} 所高中，数据已完全核对无误。` : "暂未读取到2026配额表。"}</p>
         </article>
-        <article class="current-year-warning">
-          <strong>待发布</strong>
-          <span>2026分数段与录取结果</span>
-          <p>当前还不能完全脱离2025数据做正式填报测算；今年成绩分数段、控制线和录取结果发布后，应替换临时参考。</p>
+        <article>
+          <strong>${controlLines2026.length.toLocaleString()} 条</strong>
+          <span>2026录取控制线</span>
+          <p>已接入第一批次、第二批次、第三批次及3+4贯通班投档控制线；学校录取结果发布后再接入各校实际录取分数线。</p>
         </article>
       </div>
       <div class="current-year-subgrid">
+        <div class="current-year-block current-year-control-block">
+          <h4>2026录取控制线</h4>
+          <div class="control-line-table-wrap">
+            <table class="control-line-table">
+              <thead>
+                <tr>
+                  <th>区域/类别</th>
+                  <th>第一批</th>
+                  <th>第二批</th>
+                  <th>其他控制线</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${renderControlLineRows(controlLines2026)}
+              </tbody>
+            </table>
+          </div>
+          <p class="quota-review-note">来源：贵阳市招考网2026年7月10日官方发布；各校实际录取分数线需等7月17日至24日录取结果形成后再接入。</p>
+        </div>
         <div class="current-year-block current-year-plan-block">
           <h4>招生计划分类</h4>
           <div class="current-year-list">
@@ -1344,6 +1522,22 @@ function escapeHtml(value) {
 function formatSchoolAddress(address) {
   const value = String(address || "").trim();
   return value && value !== "（待补充）" ? value : "地址待补充";
+}
+
+async function loadEducationNewsData() {
+  const educationNewsResponse = await fetch(`./data/education-news.json?v=${Date.now()}`, { cache: "no-store" });
+  state.educationNews = await educationNewsResponse.json();
+}
+
+async function refreshEducationNewsData() {
+  const summary = document.querySelector("#educationNewsSummary");
+  if (summary) summary.textContent = "正在刷新教育资讯数据...";
+  try {
+    await loadEducationNewsData();
+    renderEducationNews();
+  } catch (error) {
+    if (summary) summary.textContent = `教育资讯刷新失败：${error.message}`;
+  }
 }
 
 function renderEducationNews() {
@@ -1904,6 +2098,7 @@ function renderResults(form) {
                   <span class="tag">${item.nature}</span>
                   <span class="tag">2025线 ${item.score}</span>
                   <span class="tag">差值 ${item.delta >= 0 ? "+" : ""}${Math.round(item.delta)}</span>
+                  <span class="tag">${item.controlLineInfo ? `控制线${item.controlLineInfo.score}分${item.controlLineInfo.passed ? "已达" : "未达"}` : "控制线待核对"}</span>
                 </div>
                 <p class="school-address">${addressText(item)}</p>
                 <p class="reason">${item.reason}</p>
@@ -2245,8 +2440,7 @@ async function startApp(initialPage = getRequestedPage()) {
   state.data = await response.json();
   const schoolInfoResponse = await fetch(`./data/school-info-2026.json?v=${Date.now()}`, { cache: "no-store" });
   state.schoolInfo = await schoolInfoResponse.json();
-  const educationNewsResponse = await fetch(`./data/education-news.json?v=${Date.now()}`, { cache: "no-store" });
-  state.educationNews = await educationNewsResponse.json();
+  await loadEducationNewsData();
   const competitionEventsResponse = await fetch(`./data/competition-events-2026.json?v=${Date.now()}`, { cache: "no-store" });
   state.competitionEvents = await competitionEventsResponse.json();
   try {
@@ -2258,8 +2452,8 @@ async function startApp(initialPage = getRequestedPage()) {
   }
   integrateQuotaAllocationData();
   document.querySelector("#dataStatus").textContent = state.quotaAllocation
-    ? "2026计划、配额表与2025参考数据已加载"
-    : "2026计划与2025参考数据已加载";
+    ? "2026计划、控制线、一分一段表、配额表与历史参考数据已加载"
+    : "2026计划、控制线、一分一段表与历史参考数据已加载";
   renderMetrics();
   renderCurrentYearData();
   renderSourceOverview();
@@ -2303,6 +2497,7 @@ async function startApp(initialPage = getRequestedPage()) {
   document.querySelector("#schoolSearch").addEventListener("input", (event) => {
     renderSchoolTable(event.target.value);
   });
+  document.querySelector("#refreshEducationNewsButton")?.addEventListener("click", refreshEducationNewsData);
   state.appReady = true;
   updateAuthVisibility();
 }

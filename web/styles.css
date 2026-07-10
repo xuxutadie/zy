@@ -1313,6 +1313,51 @@ body.auth-locked .app-shell {
   font-weight: 900;
 }
 
+.control-line-table-wrap {
+  overflow: auto;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.control-line-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--primary-dark);
+  font-size: 13px;
+}
+
+.control-line-table th,
+.control-line-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #e5edf8;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.control-line-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eef6ff;
+  color: #1d4ed8;
+  font-weight: 900;
+}
+
+.control-line-table td:nth-child(2),
+.control-line-table td:nth-child(3),
+.control-line-table td:nth-child(4) {
+  color: #b91c1c;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.control-line-table tbody tr:nth-child(even) {
+  background: #f8fbff;
+}
+
 .quota-detail-section {
   margin-top: 18px;
   padding-top: 16px;
@@ -5336,4 +5381,292 @@ body.sidebar-collapsed .account-trigger::after {
     grid-template-columns: 1fr;
     gap: 6px;
   }
+}
+
+@media (max-width: 760px) {
+  body,
+  body.sidebar-collapsed {
+    --sidebar-width: 100%;
+  }
+
+  body {
+    min-width: 0;
+  }
+
+  .app-shell {
+    display: block;
+    grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-shell::before {
+    display: none;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    inset: auto;
+    z-index: 20;
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 10px 12px;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid rgba(147, 197, 253, 0.28);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  }
+
+  .brand,
+  body.sidebar-collapsed .brand {
+    display: block;
+    min-height: 0;
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    border-bottom: 0;
+    text-align: left;
+  }
+
+  .brand > div,
+  body.sidebar-collapsed .brand > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .brand strong,
+  body.sidebar-collapsed .brand strong {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  body.sidebar-collapsed .brand strong::after {
+    content: none;
+    display: none;
+  }
+
+  .brand span,
+  body.sidebar-collapsed .brand span {
+    display: block !important;
+    font-size: 11px;
+  }
+
+  .nav,
+  body.sidebar-collapsed .nav {
+    display: flex;
+    grid-template-columns: none;
+    gap: 8px;
+    margin: 0 -2px;
+    padding: 2px 2px 8px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-group,
+  body.sidebar-collapsed .nav-group {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 168px;
+    gap: 6px;
+  }
+
+  .nav > a {
+    flex: 0 0 auto;
+    min-width: 144px;
+  }
+
+  .nav a,
+  body.sidebar-collapsed .nav a {
+    justify-content: flex-start;
+    min-height: 42px;
+    padding: 9px 12px;
+    font-size: 13px;
+    line-height: 1.25;
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  body.sidebar-collapsed .nav a::after {
+    content: none;
+    display: none;
+  }
+
+  .subnav,
+  body.sidebar-collapsed .subnav {
+    display: flex !important;
+    grid-template-columns: none;
+    gap: 6px;
+    margin: 6px 0 0;
+    padding: 0;
+    overflow-x: auto;
+    border-left: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .subnav a,
+  body.sidebar-collapsed .subnav a {
+    flex: 0 0 auto;
+    min-width: 112px;
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .sidebar .account-panel {
+    margin-top: 8px;
+  }
+
+  .workspace {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 14px 12px 24px;
+  }
+
+  .topbar {
+    width: 100%;
+    min-height: 320px;
+    padding: 20px 16px;
+    border-radius: 18px;
+    background-position: center right;
+  }
+
+  .topbar h1 {
+    font-size: 31px;
+    line-height: 1.12;
+  }
+
+  .topbar-copy {
+    max-width: 100%;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .hero-data-strip {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .hero-data-strip span {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .home-overview,
+  .calculator-layout,
+  .dashboard-grid,
+  .data-grid,
+  .education-news-grid,
+  .competition-summary,
+  .competition-event-grid,
+  .help-rules,
+  .help-layout,
+  .school-info-grid,
+  .directory-summary,
+  .featured-school-grid,
+  .school-quick-grid,
+  .metrics,
+  .source-year-grid,
+  .source-list,
+  .pathway-grid,
+  .quota-summary,
+  .quota-list,
+  .result-list,
+  .calc-form-grid,
+  .mini-grid,
+  .subject-group .mini-grid,
+  .inline-switches {
+    grid-template-columns: 1fr;
+  }
+
+  .home-card,
+  .panel,
+  .field-group,
+  .input-panel {
+    border-radius: 14px;
+  }
+
+  .panel,
+  .home-card {
+    padding: 16px;
+  }
+
+  .input-panel {
+    padding: 0;
+  }
+
+  .panel-title,
+  .education-news-head,
+  .featured-school-title,
+  .school-quick-head,
+  .competition-source,
+  .dialog-head,
+  .quota-head,
+  .quota-card,
+  .school-card,
+  .help-reply-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .school-page-search,
+  .search {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .table-wrap,
+  .directory-table-wrap,
+  .quota-detail-table-wrap,
+  .quota-review-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap table,
+  .directory-table-wrap table,
+  .quota-detail-table-wrap table,
+  .quota-review-table-wrap table {
+    min-width: 720px;
+  }
+
+  .result-dialog {
+    width: calc(100vw - 18px);
+    max-height: calc(100dvh - 18px);
+  }
+
+  .dialog-frame {
+    max-height: calc(100dvh - 18px);
+    padding: 12px;
+  }
+
+  .form-actions,
+  .summary-chips {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions button,
+  .secondary-action,
+  .inline-action {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .chance,
+  .quota-score {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+  /* end mobile app layout */
 }

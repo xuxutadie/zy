@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 import unittest
 
@@ -7,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INDEX_HTML = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
 APP_JS = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
 STYLES_CSS = (ROOT / "web" / "styles.css").read_text(encoding="utf-8")
+SIMULATION_DATA = json.loads((ROOT / "web" / "data" / "2025-simulation.json").read_text(encoding="utf-8"))
 
 
 class HomepageContractTests(unittest.TestCase):
@@ -51,7 +53,7 @@ class HomepageContractTests(unittest.TestCase):
         self.assertIn('group.dataset.collapsed = hasActiveChild ? "false" : "true";', APP_JS)
 
     def test_active_sidebar_buttons_have_distinct_color(self) -> None:
-        self.assertIn("styles.css?v=20260620-content-heroes", INDEX_HTML)
+        self.assertIn("styles.css?v=20260620-mobile-layout", INDEX_HTML)
         self.assertIn(".brand.active {", STYLES_CSS)
         self.assertIn(".nav a.active {", STYLES_CSS)
         self.assertIn(".subnav a.active {", STYLES_CSS)
@@ -122,6 +124,32 @@ class HomepageContractTests(unittest.TestCase):
             self.assertNotIn("exam-simulator-hero", hero_match.group(0))
             self.assertNotIn("school-info-hero", hero_match.group(0))
 
+    def test_education_news_can_refresh_without_full_page_reload(self) -> None:
+        self.assertIn('id="refreshEducationNewsButton"', INDEX_HTML)
+        self.assertIn("async function loadEducationNewsData()", APP_JS)
+        self.assertIn("async function refreshEducationNewsData()", APP_JS)
+        self.assertIn("renderEducationNews();", APP_JS)
+        self.assertIn('document.querySelector("#refreshEducationNewsButton")?.addEventListener("click", refreshEducationNewsData);', APP_JS)
+
+    def test_mobile_layout_turns_sidebar_into_top_navigation(self) -> None:
+        mobile_match = re.search(r'@media \(max-width: 760px\)\s*\{[\s\S]*?/\* end mobile app layout \*/\s*\}', STYLES_CSS)
+
+        self.assertIsNotNone(mobile_match)
+        mobile_css = mobile_match.group(0)
+        self.assertIn(".app-shell {", mobile_css)
+        self.assertIn("display: block;", mobile_css)
+        self.assertIn(".app-shell::before {", mobile_css)
+        self.assertIn("display: none;", mobile_css)
+        self.assertIn(".sidebar {", mobile_css)
+        self.assertIn("position: sticky;", mobile_css)
+        self.assertIn("width: 100%;", mobile_css)
+        self.assertIn(".workspace {", mobile_css)
+        self.assertIn("width: 100%;", mobile_css)
+        self.assertIn(".nav {", mobile_css)
+        self.assertIn("overflow-x: auto;", mobile_css)
+        self.assertIn(".table-wrap", mobile_css)
+        self.assertIn("-webkit-overflow-scrolling: touch;", mobile_css)
+
     def test_home_cards_have_distinct_color_accents(self) -> None:
         for tone in ("exam", "school", "content", "help"):
             self.assertIn(f".home-card-{tone}", STYLES_CSS)
@@ -156,6 +184,136 @@ class HomepageContractTests(unittest.TestCase):
         self.assertNotIn('data-page="data"', INDEX_HTML)
         self.assertNotIn('id="data"', INDEX_HTML)
         self.assertNotIn('"data",', APP_JS)
+
+    def test_2025_admission_lines_include_official_minimum_region_ranks(self) -> None:
+        schools = SIMULATION_DATA["schools"]
+        self.assertEqual(sum(1 for row in schools if row.get("lineRank")), 153)
+
+        guiyang_no1 = next(
+            row
+            for row in schools
+            if row["school"] == "\u8d35\u9633\u5e02\u7b2c\u4e00\u4e2d\u5b66" and row["score"] == 678
+        )
+        self.assertEqual(guiyang_no1["rankRegion"], "\u4e09\u533a\u4e00\u5730")
+        self.assertEqual(guiyang_no1["lineRank"], 1011)
+
+        minzu_affiliated = next(
+            row
+            for row in schools
+            if row["school"] == "\u4e2d\u592e\u6c11\u65cf\u5927\u5b66\u9644\u5c5e\u4e2d\u5b66\u8d35\u9633\u5b66\u6821"
+            and row["score"] == 648
+        )
+        self.assertEqual(minzu_affiliated["rankRegion"], "\u5168\u5e02")
+        self.assertEqual(minzu_affiliated["lineRank"], 5218)
+
+        self.assertIn("function getOfficialLineRank(school)", APP_JS)
+        self.assertIn("function getLineRankForSchool(school, region = \"\")", APP_JS)
+        self.assertIn("const lineRankInfo = getLineRankForSchool(school, form.region);", APP_JS)
+
+    def test_2026_control_lines_are_entered_and_rendered(self) -> None:
+        lines_2026 = [row for row in SIMULATION_DATA["controlLines"] if row["year"] == 2026]
+
+        self.assertEqual(len(lines_2026), 11)
+
+        by_region = {row["region"]: row for row in lines_2026}
+        self.assertEqual(by_region["\u4e09\u533a\u4e00\u5730"]["first"], 582)
+        self.assertEqual(by_region["\u4e09\u533a\u4e00\u5730"]["second"], 508)
+        self.assertEqual(by_region["\u8d35\u5b89\u65b0\u533a"]["first"], 537)
+        self.assertEqual(by_region["\u8d35\u5b89\u65b0\u533a"]["second"], 482)
+
+        third_batch = next(row for row in lines_2026 if row["note"] == "\u7b2c\u4e09\u6279\u6b21\u5168\u5e02\u7edf\u4e00\u63a7\u5236\u7ebf")
+        self.assertEqual(third_batch["other"], "403")
+
+        through_program = next(row for row in lines_2026 if row["note"] == "3+4\u4e2d\u804c\u6559\u80b2\u4e0e\u5e94\u7528\u672c\u79d1\u6559\u80b2\u8d2f\u901a\u73ed")
+        self.assertEqual(through_program["other"], "476")
+
+        self.assertIn("controlLines2026", APP_JS)
+        self.assertIn("2026\u5f55\u53d6\u63a7\u5236\u7ebf", APP_JS)
+        self.assertIn("renderControlLineRows(controlLines2026)", APP_JS)
+
+        control_source = next(
+            item for item in SIMULATION_DATA["dataSources"] if item["category"] == "2026\u63a7\u5236\u7ebf"
+        )
+        self.assertEqual(control_source["url"], "https://www.gyzkzx.cn/html/2026-07/10/content_939412.htm")
+        self.assertIn("\u5b98\u65b9\u9875\u9762\u5df2\u590d\u6838", control_source["status"])
+        self.assertNotIn("2026???", {item["category"] for item in SIMULATION_DATA["dataSources"]})
+
+    def test_2026_control_lines_gate_volunteer_recommendations(self) -> None:
+        self.assertIn("function getBatchControlLine(batch, region)", APP_JS)
+        self.assertIn("function getControlLineForSchool(school, form)", APP_JS)
+        self.assertIn("function applyControlLineGate(chance, controlLineInfo)", APP_JS)
+        self.assertIn("const controlLineInfo = getControlLineForSchool(school, form);", APP_JS)
+        self.assertIn("const gatedChance = applyControlLineGate(chance, controlLineInfo);", APP_JS)
+        self.assertIn("controlLineInfo,", APP_JS)
+        self.assertIn("\u672a\u8fbe2026\u6295\u6863\u63a7\u5236\u7ebf", APP_JS)
+        self.assertIn("\u63a7\u5236\u7ebf", APP_JS)
+
+    def test_2026_school_admission_lines_are_not_fabricated_before_admission(self) -> None:
+        source = next(
+            item for item in SIMULATION_DATA["dataSources"] if item["category"] == "2026\u5404\u6821\u5f55\u53d6\u7ebf"
+        )
+        inventory = next(
+            item for item in SIMULATION_DATA["dataInventory"] if item["label"] == "2026\u5404\u6821\u5f55\u53d6\u7ebf"
+        )
+
+        self.assertEqual(source["url"], "https://www.gyzkzx.cn/html/2026-07/09/content_939401.htm")
+        self.assertIn("7\u670817\u65e5\u81f37\u670824\u65e5", source["status"])
+        self.assertEqual(inventory["count"], 0)
+        self.assertIn("\u4e0d\u4f1a", inventory["detail"])
+        self.assertIn("\u5b66\u6821\u5f55\u53d6\u7ed3\u679c\u53d1\u5e03\u540e\u518d\u63a5\u5165\u5404\u6821\u5b9e\u9645\u5f55\u53d6\u5206\u6570\u7ebf", APP_JS)
+
+    def test_2026_score_distribution_is_entered_from_official_pdf(self) -> None:
+        city_rows = SIMULATION_DATA["scoreDistribution2026"]
+        region_rows = SIMULATION_DATA["regionScoreDistribution2026"]
+
+        self.assertEqual(len(city_rows), 701)
+        self.assertEqual(len(region_rows), 6309)
+
+        self.assertEqual(city_rows[0], {
+            "score": 700,
+            "segment": "700\u53ca\u4ee5\u4e0a",
+            "count": 103,
+            "cumulative": 103,
+            "percent": 0.14,
+        })
+        self.assertEqual(city_rows[-1], {
+            "score": 0,
+            "segment": "0",
+            "count": 9,
+            "cumulative": 71941,
+            "percent": 99.93,
+        })
+
+        city_582 = next(row for row in city_rows if row["score"] == 582)
+        city_508 = next(row for row in city_rows if row["score"] == 508)
+        self.assertEqual(city_582["cumulative"], 22157)
+        self.assertEqual(city_508["cumulative"], 37332)
+
+        main_582 = next(
+            row for row in region_rows if row["region"] == "\u4e09\u533a\u4e00\u5730" and row["score"] == 582
+        )
+        guian_508 = next(
+            row for row in region_rows if row["region"] == "\u8d35\u5b89\u65b0\u533a" and row["score"] == 508
+        )
+        self.assertEqual(main_582["cumulative"], 14299)
+        self.assertEqual(guian_508["cumulative"], 1235)
+
+        source = next(
+            item for item in SIMULATION_DATA["dataSources"] if item["category"] == "2026\u4e00\u5206\u4e00\u6bb5\u8868"
+        )
+        self.assertEqual(source["url"], "https://www.gyzkzx.cn/html/2026-07/10/content_939411.htm")
+        self.assertIn("2026\u4e00\u5206\u4e00\u6bb5\u8868", SIMULATION_DATA["meta"]["generatedFrom"])
+
+    def test_calculator_prefers_2026_score_distribution_for_rank_estimation(self) -> None:
+        self.assertIn("function getActiveScoreDistribution()", APP_JS)
+        self.assertIn("function getActiveRegionScoreDistribution(region)", APP_JS)
+        self.assertIn("function getActiveScoreDistributionYear()", APP_JS)
+        self.assertIn("state.data.scoreDistribution2026", APP_JS)
+        self.assertIn("state.data.regionScoreDistribution2026", APP_JS)
+        self.assertIn("getActiveScoreDistribution()", APP_JS)
+        self.assertIn("getActiveRegionScoreDistribution(region)", APP_JS)
+        self.assertIn("${distributionYear}\u5168\u5e02\u5206\u6570\u6bb5", APP_JS)
+        self.assertIn("${scoreDistributionYear} \u5206\u6570\u6bb5", APP_JS)
 
 
 if __name__ == "__main__":
