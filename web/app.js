@@ -842,6 +842,7 @@ function isModelHighCandidate(school) {
 function normalizeControlRegion(region) {
   const value = String(region || "");
   if (value.includes("三区一地")) return "三区一地";
+  if (value.includes("云岩") || value.includes("南明") || value.includes("观山湖") || value.includes("小河")) return "三区一地";
   if (value.includes("花溪")) return "花溪区";
   if (value.includes("乌当")) return "乌当区";
   if (value.includes("白云")) return "白云区";
@@ -853,29 +854,53 @@ function normalizeControlRegion(region) {
   return value;
 }
 
+const admissionRegionPattern =
+  "三区一地|云岩区|南明区|观山湖区|原小河地区|小河|花溪区?|乌当区?|白云区?|清镇市?|息烽县?|修文县?|开阳县?|贵安新区?";
+
+function getAdmissionTargetRegions(school) {
+  const text = `${school?.batch || ""} ${school?.type || ""}`;
+  const regions = new Set();
+  const directMatcher = new RegExp(`面向(${admissionRegionPattern})招生`, "g");
+  let directMatch = directMatcher.exec(text);
+  while (directMatch) {
+    regions.add(normalizeControlRegion(directMatch[1]));
+    directMatch = directMatcher.exec(text);
+  }
+
+  const localMatcher = new RegExp(`(${admissionRegionPattern})统招生`, "g");
+  let localMatch = localMatcher.exec(text);
+  while (localMatch) {
+    regions.add(normalizeControlRegion(localMatch[1]));
+    localMatch = localMatcher.exec(text);
+  }
+
+  return Array.from(regions);
+}
+
 function isAdmissionTypeAvailableForRegion(school, region) {
   const targetRegion = normalizeControlRegion(region);
   const text = `${school.batch || ""} ${school.type || ""}`;
-  const regionPattern = "三区一地|云岩区|南明区|观山湖区|小河|花溪区|乌当区|白云区|清镇市|息烽县|修文县|开阳县|贵安新区";
-  const directRegionMatch = text.match(new RegExp(`面向(${regionPattern})招生`));
-  if (directRegionMatch) return targetRegion === normalizeControlRegion(directRegionMatch[1]);
-
-  const localUnifiedMatch = text.match(new RegExp(`(${regionPattern})统招生`));
-  if (localUnifiedMatch) return targetRegion === normalizeControlRegion(localUnifiedMatch[1]);
-
   const namedNonLocalMatch = text.match(/(花溪|乌当|白云|清镇|息烽|修文|开阳|贵安)(?:区|市|县|新区)?面向非本区/);
   if (namedNonLocalMatch) return targetRegion !== normalizeControlRegion(namedNonLocalMatch[1]);
 
   const namedMainRegionMatch = text.match(/(花溪|乌当|白云|清镇|息烽|修文|开阳|贵安)(?:区|市|县|新区)?面向三区一地/);
   if (namedMainRegionMatch) return targetRegion === "三区一地";
 
+  const admissionRegions = getAdmissionTargetRegions(school);
+  if (admissionRegions.length) return admissionRegions.includes(targetRegion);
+
   return true;
 }
 
-function getBatchControlLine(batch, region) {
+function getControlRegionForAdmission(school, region) {
+  const admissionRegions = getAdmissionTargetRegions(school);
+  return admissionRegions.length === 1 ? admissionRegions[0] : normalizeControlRegion(region);
+}
+
+function getBatchControlLine(batch, region, school = null) {
   const text = String(batch || "");
   const lines = (state.data?.controlLines || []).filter((line) => Number(line.year) === 2026);
-  const normalizedRegion = normalizeControlRegion(region);
+  const normalizedRegion = getControlRegionForAdmission(school, region);
   let matched = null;
   let score = 0;
   let label = "";
@@ -909,7 +934,7 @@ function getBatchControlLine(batch, region) {
 
 function getControlLineForSchool(school, form) {
   const batchText = `${school.batch} ${school.type}`;
-  const controlLine = getBatchControlLine(batchText, form.region);
+  const controlLine = getBatchControlLine(batchText, form.region, school);
   if (!controlLine) return null;
   const score = Number(form.score || 0);
   return {
@@ -1036,7 +1061,7 @@ function calculateQuotaMock(school, form) {
   const stageText = unifiedLikely ? "第一阶段统招优先" : "第二阶段配额参考";
   const detailText =
     controlLineInfo && !controlLineInfo.passed
-      ? `未达2026投档控制线：${controlLineInfo.region}${controlLineInfo.label}为 ${controlLineInfo.score} 分，当前低 ${Math.abs(controlLineInfo.gap)} 分，配额路径也不建议作为有效投档参考`
+      ? `未达2026批次投档控制线：${controlLineInfo.region}${controlLineInfo.label}为 ${controlLineInfo.score} 分，当前低 ${Math.abs(controlLineInfo.gap)} 分，配额路径也不建议作为有效投档参考`
       : unifiedLikely
         ? "按2025线模拟，可能先被统招录取；统招优先项不进入配额竞争列表"
         : `未明显锁定统招时，再看配额；本校前排可能统招释放约 ${releasedAhead} 位，有效排位约 ${effectiveQuotaRank}`;
@@ -1090,9 +1115,9 @@ function buildReason(school, form, chance, controlLineInfo) {
   const subjectText = buildSubjectReason(school, form);
   const controlLineText = controlLineInfo
     ? controlLineInfo.passed
-      ? `已达2026${controlLineInfo.region}${controlLineInfo.label}投档控制线 ${controlLineInfo.score} 分，高出 ${controlLineInfo.gap} 分`
-      : `未达2026投档控制线：${controlLineInfo.region}${controlLineInfo.label}为 ${controlLineInfo.score} 分，当前低 ${Math.abs(controlLineInfo.gap)} 分，本批次不建议作为有效投档志愿`
-    : "该批次暂无已接入的2026投档控制线，仍需人工核对";
+      ? `已达2026${controlLineInfo.region}${controlLineInfo.label}批次投档控制线 ${controlLineInfo.score} 分，高出 ${controlLineInfo.gap} 分；这不是该校2026录取线，学校实际线要等录取结束后形成`
+      : `未达2026批次投档控制线：${controlLineInfo.region}${controlLineInfo.label}为 ${controlLineInfo.score} 分，当前低 ${Math.abs(controlLineInfo.gap)} 分，本批次不建议作为有效投档志愿`
+    : "该批次暂无已接入的2026批次投档控制线，仍需人工核对";
   return `${controlLineText}。比2025最低线${delta >= 0 ? "高" : "低"} ${Math.abs(delta)} 分，${rankText}，${planText}，${historyText}，${quotaText}，${subjectText}，风险标记为${riskLabel(chance)}。`;
 }
 
@@ -2118,7 +2143,7 @@ function renderResults(form) {
                   <span class="tag">${item.nature}</span>
                   <span class="tag">2025线 ${item.score}</span>
                   <span class="tag">差值 ${item.delta >= 0 ? "+" : ""}${Math.round(item.delta)}</span>
-                  <span class="tag">${item.controlLineInfo ? `控制线${item.controlLineInfo.score}分${item.controlLineInfo.passed ? "已达" : "未达"}` : "控制线待核对"}</span>
+                  <span class="tag">${item.controlLineInfo ? `2026批次线${item.controlLineInfo.score}分${item.controlLineInfo.passed ? "已达" : "未达"}` : "2026批次线待核对"}</span>
                 </div>
                 <p class="school-address">${addressText(item)}</p>
                 <p class="reason">${item.reason}</p>

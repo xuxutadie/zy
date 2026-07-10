@@ -239,22 +239,33 @@ class HomepageContractTests(unittest.TestCase):
         self.assertNotIn("2026???", {item["category"] for item in SIMULATION_DATA["dataSources"]})
 
     def test_2026_control_lines_gate_volunteer_recommendations(self) -> None:
-        self.assertIn("function getBatchControlLine(batch, region)", APP_JS)
+        self.assertIn("function getBatchControlLine(batch, region, school = null)", APP_JS)
         self.assertIn("function getControlLineForSchool(school, form)", APP_JS)
         self.assertIn("function applyControlLineGate(chance, controlLineInfo)", APP_JS)
         self.assertIn("const controlLineInfo = getControlLineForSchool(school, form);", APP_JS)
         self.assertIn("const gatedChance = applyControlLineGate(chance, controlLineInfo);", APP_JS)
         self.assertIn("controlLineInfo,", APP_JS)
-        self.assertIn("\u672a\u8fbe2026\u6295\u6863\u63a7\u5236\u7ebf", APP_JS)
-        self.assertIn("\u63a7\u5236\u7ebf", APP_JS)
+        self.assertIn("\u672a\u8fbe2026\u6279\u6b21\u6295\u6863\u63a7\u5236\u7ebf", APP_JS)
+        self.assertIn("2026\u6279\u6b21\u7ebf", APP_JS)
+        self.assertIn("\u8fd9\u4e0d\u662f\u8be5\u68212026\u5f55\u53d6\u7ebf", APP_JS)
 
     def test_region_targeted_admission_types_are_filtered_by_selected_region(self) -> None:
+        huaxi_targeted = [
+            row
+            for row in SIMULATION_DATA["schools"]
+            if "\u9762\u5411\u82b1\u6eaa\u533a\u62db\u751f" in f"{row.get('batch', '')} {row.get('type', '')}"
+        ]
+        self.assertGreaterEqual(len(huaxi_targeted), 1)
         self.assertIn("function isAdmissionTypeAvailableForRegion(school, region)", APP_JS)
-        self.assertIn("云岩区|南明区|观山湖区|小河|花溪区|乌当区|白云区", APP_JS)
-        self.assertIn("面向(${regionPattern})招生", APP_JS)
-        self.assertIn("(${regionPattern})统招生", APP_JS)
+        self.assertIn("function getAdmissionTargetRegions(school)", APP_JS)
+        self.assertIn("function getControlRegionForAdmission(school, region)", APP_JS)
+        self.assertIn("云岩\") || value.includes(\"南明\") || value.includes(\"观山湖\") || value.includes(\"小河", APP_JS)
+        self.assertIn("花溪区?", APP_JS)
+        self.assertIn("面向(${admissionRegionPattern})招生", APP_JS)
+        self.assertIn("(${admissionRegionPattern})统招生", APP_JS)
         self.assertIn("面向非本区", APP_JS)
         self.assertIn("面向三区一地", APP_JS)
+        self.assertIn("if (admissionRegions.length) return admissionRegions.includes(targetRegion);", APP_JS)
         self.assertIn(".filter((school) => isAdmissionTypeAvailableForRegion(school, form.region))", APP_JS)
 
     def test_special_programs_are_kept_as_2025_reference_candidates(self) -> None:
@@ -263,7 +274,8 @@ class HomepageContractTests(unittest.TestCase):
         self.assertNotIn("isComparableVolunteerReference(school) && text.includes(\"第一批次\")", APP_JS)
         self.assertIn("概率按2025各校实际录取线/最低位次作历史基准", INDEX_HTML)
         self.assertIn("特长生、国际项目班、中外合作和综合高中会纳入参考", INDEX_HTML)
-        self.assertIn("app.js?v=20260710-program-reference", INDEX_HTML)
+        self.assertIn("2026各校实际录取线需录取结束后形成", INDEX_HTML)
+        self.assertIn("app.js?v=20260710-region-control-line-fix", INDEX_HTML)
 
     def test_2026_school_admission_lines_are_not_fabricated_before_admission(self) -> None:
         source = next(
