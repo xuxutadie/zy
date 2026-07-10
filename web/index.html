@@ -191,6 +191,27 @@
             </div>
           </form>
 
+          <section class="panel school-lookup-panel" aria-labelledby="calculatorSchoolLookupTitle">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">School Lookup</p>
+                <h2 id="calculatorSchoolLookupTitle">指定学校录取数据查询</h2>
+              </div>
+              <span class="panel-disclaimer">按当前报考区域标记是否可作为志愿参考。</span>
+            </div>
+            <form class="school-lookup-form" id="calculatorSchoolLookupForm">
+              <label for="calculatorSchoolLookupInput">
+                <span>学校名称</span>
+                <input id="calculatorSchoolLookupInput" name="calculatorSchoolLookup" type="search" list="calculatorSchoolOptions" placeholder="输入或选择高中名称…" autocomplete="off" />
+              </label>
+              <datalist id="calculatorSchoolOptions"></datalist>
+              <button class="secondary-action" id="calculatorSchoolLookupButton" type="submit">查询学校</button>
+            </form>
+            <div class="school-lookup-result" id="calculatorSchoolLookupResult" aria-live="polite">
+              <div class="empty-card">输入学校名称后，可查看该校2025实际录取线、最低位次、历史线、2026计划和批次控制线参考。</div>
+            </div>
+          </section>
+
           <aside class="panel calculator-guide">
             <div class="panel-title">
               <div>
@@ -493,6 +514,6 @@
 
       </main>
     </div>
-    <script src="./app.js?v=20260710-region-control-line-fix"></script>
+    <script src="./app.js?v=20260710-school-lookup"></script>
   </body>
 </html>

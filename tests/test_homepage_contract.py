@@ -172,6 +172,25 @@ class HomepageContractTests(unittest.TestCase):
         self.assertNotIn("function renderCalculatorQuotaReview()", APP_JS)
         self.assertNotIn("renderCalculatorQuotaReview();", APP_JS)
 
+    def test_calculator_has_school_admission_lookup(self) -> None:
+        calculator_match = re.search(r'<section id="calculator"[\s\S]*?</section>', INDEX_HTML)
+
+        self.assertIsNotNone(calculator_match)
+        calculator_html = calculator_match.group(0)
+        self.assertIn("指定学校录取数据查询", calculator_html)
+        self.assertIn('id="calculatorSchoolLookupForm"', calculator_html)
+        self.assertIn('id="calculatorSchoolLookupInput"', calculator_html)
+        self.assertIn('id="calculatorSchoolLookupResult"', calculator_html)
+        self.assertIn("function renderCalculatorSchoolOptions()", APP_JS)
+        self.assertIn("function renderCalculatorSchoolLookup()", APP_JS)
+        self.assertIn("function getSchoolLookupRows(keyword)", APP_JS)
+        self.assertIn("当前区域可参考", APP_JS)
+        self.assertIn("2025实际线", APP_JS)
+        self.assertIn("2026各校实际录取线需等录取结束后形成", APP_JS)
+        self.assertIn('document.querySelector("#calculatorSchoolLookupForm").addEventListener("submit"', APP_JS)
+        self.assertIn(".school-lookup-panel", STYLES_CSS)
+        self.assertIn(".school-lookup-data-grid", STYLES_CSS)
+
     def test_quota_allocation_indicators_live_on_dashboard_page(self) -> None:
         dashboard_match = re.search(r'<section id="dashboard"[\s\S]*?</section>', INDEX_HTML)
 
@@ -275,7 +294,7 @@ class HomepageContractTests(unittest.TestCase):
         self.assertIn("概率按2025各校实际录取线/最低位次作历史基准", INDEX_HTML)
         self.assertIn("特长生、国际项目班、中外合作和综合高中会纳入参考", INDEX_HTML)
         self.assertIn("2026各校实际录取线需录取结束后形成", INDEX_HTML)
-        self.assertIn("app.js?v=20260710-region-control-line-fix", INDEX_HTML)
+        self.assertIn("app.js?v=20260710-school-lookup", INDEX_HTML)
 
     def test_2026_school_admission_lines_are_not_fabricated_before_admission(self) -> None:
         source = next(

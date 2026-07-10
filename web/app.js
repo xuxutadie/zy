@@ -1279,6 +1279,117 @@ function renderEmptyResults() {
   document.querySelector("#resultList").innerHTML = `<div class="empty-card">点击重新测算后展示统招路径下的志愿推荐结果。</div>`;
 }
 
+function normalizeLookupKeyword(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function renderCalculatorSchoolOptions() {
+  const options = document.querySelector("#calculatorSchoolOptions");
+  if (!options || !state.data?.schools?.length) return;
+  const schoolNames = [...new Set(state.data.schools.map((school) => school.school).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+  options.innerHTML = schoolNames.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
+}
+
+function getSchoolLookupRows(keyword) {
+  const value = normalizeLookupKeyword(keyword);
+  if (!value) return [];
+  const rows = state.data.schools.filter((school) => {
+    const searchText = `${school.school} ${school.batch} ${school.type} ${school.nature}`.toLowerCase();
+    return searchText.includes(value);
+  });
+  return rows.sort((a, b) => {
+    const exactA = normalizeLookupKeyword(a.school) === value ? 1 : 0;
+    const exactB = normalizeLookupKeyword(b.school) === value ? 1 : 0;
+    return exactB - exactA || b.score - a.score || String(a.type).localeCompare(String(b.type), "zh-CN");
+  });
+}
+
+function renderLookupHistory(historyRows) {
+  const rows = (historyRows || []).slice(0, 4);
+  if (!rows.length) return `<div class="school-lookup-history-empty">暂无更早年份历史线。</div>`;
+  return `
+    <div class="school-lookup-history">
+      ${rows
+        .map(
+          (row) => `
+            <span>${escapeHtml(row.year)} ${escapeHtml(row.batch)} ${escapeHtml(row.type)}：${escapeHtml(row.score)}分</span>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function buildSchoolLookupCard(school, form) {
+  const isCurrentRegionAvailable = isAdmissionTypeAvailableForRegion(school, form.region);
+  const controlLineInfo = getControlLineForSchool(school, form);
+  const lineRankInfo = getLineRankForSchool(school, form.region);
+  const rankText = lineRankInfo?.rank
+    ? `${lineRankInfo.isOfficial ? "2025官方最低" : "2025估算"}${lineRankInfo.region || "区域"}位次 ${lineRankInfo.rank}`
+    : "最低位次待补充";
+  const controlText = controlLineInfo
+    ? `2026${controlLineInfo.region}${controlLineInfo.label}批次线 ${controlLineInfo.score} 分，当前${controlLineInfo.passed ? "已达" : "未达"}`
+    : "2026批次线需人工核对";
+  const dataQualityText = school.dataQuality && school.dataQuality !== "正常" ? `数据状态：${school.dataQuality}` : "数据状态：已接入";
+  return `
+    <article class="school-lookup-card ${isCurrentRegionAvailable ? "available" : "unavailable"}">
+      <div class="school-lookup-card-head">
+        <div>
+          <h3>${escapeHtml(school.school)}</h3>
+          <div class="school-meta">
+            <span class="tag">${escapeHtml(school.batch)}</span>
+            <span class="tag">${escapeHtml(school.type)}</span>
+            <span class="tag">${escapeHtml(school.nature)}</span>
+            <span class="tag">${isCurrentRegionAvailable ? "当前区域可参考" : "当前区域不匹配"}</span>
+          </div>
+        </div>
+        <strong>${escapeHtml(school.score)}分</strong>
+      </div>
+      <div class="school-lookup-data-grid">
+        <div><strong>2025实际线</strong><span>${escapeHtml(school.score)} 分</span></div>
+        <div><strong>最低位次</strong><span>${escapeHtml(rankText)}</span></div>
+        <div><strong>2026计划</strong><span>${escapeHtml(formatPlanReference(school))}</span></div>
+        <div><strong>批次控制</strong><span>${escapeHtml(controlText)}</span></div>
+      </div>
+      <p class="school-address">${escapeHtml(addressText(school))}</p>
+      ${renderLookupHistory(school.history)}
+      <p class="school-lookup-note">${escapeHtml(dataQualityText)}；2026各校实际录取线需等录取结束后形成，当前仅展示批次控制线和2025历史录取参考。</p>
+    </article>
+  `;
+}
+
+function renderCalculatorSchoolLookup() {
+  const input = document.querySelector("#calculatorSchoolLookupInput");
+  const container = document.querySelector("#calculatorSchoolLookupResult");
+  if (!input || !container || !state.data?.schools?.length) return;
+  const keyword = input.value.trim();
+  if (!keyword) {
+    container.innerHTML = `<div class="empty-card">输入学校名称后，可查看该校2025实际录取线、最低位次、历史线、2026计划和批次控制线参考。</div>`;
+    return;
+  }
+
+  const form = getFormValues();
+  const rows = getSchoolLookupRows(keyword);
+  if (!rows.length) {
+    container.innerHTML = `<div class="empty-card">未查询到“${escapeHtml(keyword)}”相关学校或招生类型，请换用学校全称或简称。</div>`;
+    return;
+  }
+
+  const availableCount = rows.filter((school) => isAdmissionTypeAvailableForRegion(school, form.region)).length;
+  const visibleRows = rows.slice(0, 18);
+  container.innerHTML = `
+    <div class="school-lookup-summary">
+      <div><strong>${escapeHtml(rows.length)}</strong><span>条匹配记录</span></div>
+      <div><strong>${escapeHtml(availableCount)}</strong><span>条适配当前报考区域</span></div>
+      <p>结果展示该校不同批次和招生类型的历史录取参考；“当前区域不匹配”的项目不应直接放入当前区域志愿方案。</p>
+    </div>
+    <div class="school-lookup-list">
+      ${visibleRows.map((school) => buildSchoolLookupCard(school, form)).join("")}
+    </div>
+    ${rows.length > visibleRows.length ? `<p class="form-note">已展示前 ${visibleRows.length} 条，继续输入更完整的学校名或招生类型可缩小范围。</p>` : ""}
+  `;
+}
+
 function renderMetrics() {
   const admissionCount = state.data.schools.length;
   const schoolCount = new Set(state.data.schools.map((school) => school.school)).size;
@@ -2513,6 +2624,8 @@ async function startApp(initialPage = getRequestedPage()) {
   updateAutoRankInputs();
   updateQuotaRankHint();
   renderEmptyResults();
+  renderCalculatorSchoolOptions();
+  renderCalculatorSchoolLookup();
   [
     ["#scoreInput", "input"],
     ["#regionInput", "change"],
@@ -2520,6 +2633,7 @@ async function startApp(initialPage = getRequestedPage()) {
     document.querySelector(selector).addEventListener(eventName, () => {
       updateAutoRankInputs();
       if (state.hasCalculated) runCalculation({ openDialog: false });
+      renderCalculatorSchoolLookup();
     });
   });
   document.querySelector("#middleSchoolInput").addEventListener("input", () => {
@@ -2535,6 +2649,11 @@ async function startApp(initialPage = getRequestedPage()) {
   document.querySelector("#openResultsButton").addEventListener("click", () => {
     if (state.hasCalculated) showResultDialog();
   });
+  document.querySelector("#calculatorSchoolLookupForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    renderCalculatorSchoolLookup();
+  });
+  document.querySelector("#calculatorSchoolLookupInput").addEventListener("input", renderCalculatorSchoolLookup);
   document.querySelector("#resultDialogClose").addEventListener("click", closeResultDialog);
   document.querySelector("#resultDialog").addEventListener("click", (event) => {
     if (event.target === event.currentTarget) closeResultDialog();
