@@ -172,6 +172,19 @@ class HomepageContractTests(unittest.TestCase):
         self.assertNotIn("function renderCalculatorQuotaReview()", APP_JS)
         self.assertNotIn("renderCalculatorQuotaReview();", APP_JS)
 
+    def test_calculation_dialog_opens_for_registered_users_before_saving(self) -> None:
+        start = APP_JS.index("function runCalculation(options = {})")
+        end = APP_JS.index("function renderEmptyResults()", start)
+        run_body = APP_JS[start:end]
+
+        self.assertIn("if (shouldOpenDialog) showResultDialog();", run_body)
+        self.assertIn("if (shouldOpenDialog) saveCalculatorSubmission(form, results);", run_body)
+        self.assertLess(
+            run_body.index("if (shouldOpenDialog) showResultDialog();"),
+            run_body.index("if (shouldOpenDialog) saveCalculatorSubmission(form, results);"),
+        )
+        self.assertNotIn("isAdmin()", run_body)
+
     def test_calculator_has_school_admission_lookup(self) -> None:
         calculator_match = re.search(r'<section id="calculator"[\s\S]*?</section>', INDEX_HTML)
 
@@ -299,7 +312,7 @@ class HomepageContractTests(unittest.TestCase):
         self.assertIn("概率按2025各校实际录取线/最低位次作历史基准", INDEX_HTML)
         self.assertIn("特长生、国际项目班、中外合作和综合高中会纳入参考", INDEX_HTML)
         self.assertIn("2026各校实际录取线需录取结束后形成", INDEX_HTML)
-        self.assertIn("app.js?v=20260710-school-lookup", INDEX_HTML)
+        self.assertIn("app.js?v=20260711-result-dialog", INDEX_HTML)
 
     def test_2026_school_admission_lines_are_not_fabricated_before_admission(self) -> None:
         source = next(

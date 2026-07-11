@@ -1261,8 +1261,8 @@ function runCalculation(options = {}) {
   }
   renderResults(form);
   enableResultReplay();
-  if (shouldOpenDialog) saveCalculatorSubmission(form, results);
   if (shouldOpenDialog) showResultDialog();
+  if (shouldOpenDialog) saveCalculatorSubmission(form, results);
 }
 
 function renderEmptyResults() {
